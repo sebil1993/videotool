@@ -291,7 +291,7 @@ std::string Onvif::GetSnapshotUri(std::string profile)
     std::string curlResponse = curlRequest(data);
     pugi::xml_node getSnapshotUriResponse = getResponseBody(curlResponse);
     this->snapshotUri = getSnapshotUriResponse.first_child().child("tt:Uri").text().as_string();
-    this->snapshotUri += "\n";
+    // this->snapshotUri += "\n";
     return this->snapshotUri;
 }
 std::vector<std::string> Onvif::GetDeviceInformation()

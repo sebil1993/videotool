@@ -231,6 +231,8 @@ TODO
     wenn das möglich ist
     =>> multiple prozesse mit verschiedenen kameras starten
     
+    ======> dafür muss erstmal multithreading verstanden werden    
+    
     
     wsdl dateien offline verfügbar machen (wahrscheinlich mit wsdl2h/gsoap++), nicht jedes netzwerk hat internetz
     datenbank erstellen für video und bilder dateien
