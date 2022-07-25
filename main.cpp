@@ -6,6 +6,8 @@
 #include <chrono>   // std::chrono::seconds
 #include <curl/curl.h>
 
+#include <cstdlib>
+
 size_t writeCallback(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
     FILE *writeData = (FILE *)userdata;
@@ -59,8 +61,14 @@ std::string getLinkToImage(Onvif camera)
     std::string profile = camera.getProfile(0);
     return camera.GetSnapshotUri(profile);
 }
+std::string getLinkToStream(Onvif camera)
+{
+    camera.GetProfiles();
+    std::string profile = camera.getProfile(0);
+    return camera.GetStreamUri(profile);
+}
 
-void download10Images(std::string linkToImage)
+void download10Images(std::string linkToImage, Onvif camera)
 {
     while (true)
     {
@@ -79,13 +87,13 @@ void download10Images(std::string linkToImage)
         // std::string hi = "http://10.15.2.201/onvif-cgi/jpg/image.cgi?resolution=1920x1080&compression=90";
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        time_t sysTime = time(NULL);
+        // time_t sysTime = time(NULL);
         fileName = "downloadedImages/out";
-        fileName += std::to_string(sysTime);
+        fileName += std::to_string(i);
         fileName += ".jpg";
         // if (!download_jpeg(hi, fileName, "admin:password"))
         // if (!writeImageToFile(linkToImage, fileName, "admin:password"))
-        if (!writeImageToFile(linkToImage, fileName, "seb:sebseb"))
+        if (!writeImageToFile(linkToImage, fileName, camera.getUserPWD()))
         {
             std::cout << "download failed" << std::endl;
             return;
@@ -97,6 +105,22 @@ void download10Images(std::string linkToImage)
         std::this_thread::sleep_for(std::chrono::milliseconds(1000 - timeToFinish));
     }
 }
+void record10Seconds(std::string linkToStream, Onvif camera)
+{
+    // std::cout << camera.getUserPWD() << std::endl;
+    std::string command = "";
+    command += "ffmpeg -y -i ";
+    // command += "\"";
+    command += linkToStream;
+    // command += "\"";
+    command += " -t 10 -c:v copy out2.mp4";
+    std::cout << "hier kommt der kommand: "<< command << std::endl;
+    system(command.c_str());
+}
+void ffmpegPicturesToVid()
+{
+    system("ffmpeg -y -r 1 -i downloadedImages/out%d.jpg -c:v libx264 -vf \"fps=1,format=yuv420p\" downloadedImages/out.mp4");
+}
 
 int main()
 {
@@ -106,44 +130,32 @@ int main()
 
     std::string linkToImage = getLinkToImage(axis);
     std::cout << linkToImage << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::string linkToStream = getLinkToStream(axis);
+    std::cout << linkToStream << std::endl;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    download10Images(linkToImage);
+    download10Images(linkToImage, axis);
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 
     std::cout << "it took " << timeToFinish << "[ms]"
               << " to finish method" << std::endl;
-    return 0;
-}
+    // system("cd downloadedImages");
+    ffmpegPicturesToVid();
+    std::string rtspWithAuth = "";
+    rtspWithAuth += "rtsp://";
+    rtspWithAuth += axis.getUserPWD();
+    rtspWithAuth += "@";
 
-/*
-int main(void)
-{
-    for (int i = 0; i < 10; i++)
-    {
-        std::string fileName;
-        // std::string hi = "http://10.15.100.200/cgi-bin/jpg/image.cgi?stream=jpeg";
-        std::string hi = "http://10.15.2.201/onvif-cgi/jpg/image.cgi?resolution=1920x1080&compression=90";
+    linkToStream.replace(linkToStream.find("rtsp://"), sizeof("rtsp://") - 1, rtspWithAuth);
 
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        time_t sysTime = time(NULL);
-        fileName = "out";
-        fileName += std::to_string(sysTime);
-        fileName += ".jpg";
-        // if (!download_jpeg(hi, fileName, "admin:password"))
-        if (!writeImageToFile(hi, fileName, "seb:sebseb"))
-        {
-            std::cout << "download failed" << std::endl;
-            return -1;
-        }
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-
-        std::cout << i << " Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[µs]" << std::endl;
-        std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count() << "[ns]" << std::endl;
-    }
+    std::cout << linkToStream << std::endl;
+    record10Seconds(linkToStream, axis);
 
     return 0;
 }
-*/
+
+//   rtsp://10.15.2.201/onvif-media/media.amp?profile=profile_1_h264&sessiontimeout=60&streamtype=unicast
+//   ffmpeg -i "rtsp://seb:sebseb@10.15.2.201/onvif-media/media.amp?profile=profile_1_h264&sessiontimeout=60&streamtype=unicast" -t 5 -c:v copy out.mp4
