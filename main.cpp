@@ -54,7 +54,7 @@ size_t writeImageToFile(std::string url, std::string fileName, std::string userP
         return false;
     }
 
-    // curl_easy_cleanup(curl);
+    curl_easy_cleanup(curl);
     fclose(fp);
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
@@ -98,7 +98,6 @@ std::string getLinkToStream(Onvif camera)
 void downloadImage(std::string linkToImage, Onvif camera)
 {
 
-    // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     std::string fileName;
     time_t sysTime = time(NULL);
     fileName = "downloadedImages/AXIS_";
@@ -110,19 +109,16 @@ void downloadImage(std::string linkToImage, Onvif camera)
         std::cout << "download failed" << std::endl;
         return;
     }
-    // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    // long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-    // std::cout << sysTime << "it took " << timeToFinish << "[ms]"
-    //           << " to download the image: " << fileName << std::endl;
-    // std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
-    // long long timeToFinish2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - begin).count();
-
-    // std::this_thread::sleep_for(std::chrono::milliseconds(1000 - timeToFinish2));
 }
 
-void ffmpegPicturesToVid()
+void ffmpegPicturesToVid(std::string fileName)
 {
-    system("ffmpeg -hide_banner -y -r 1 -i downloadedImages/out%d.jpg -c:v libx264 -vf \"fps=1,format=yuv420p\" downloadedImages/out.mp4");
+    // system("ffmpeg -hide_banner -y -r 1 -i downloadedImages/out%d.jpg -c:v libx264 -vf \"fps=1,format=yuv420p\" downloadedImages/out.mp4");
+    std::string command = "ffmpeg -y -r 1 -pattern_type glob -i 'downloadedImages/*.jpg' -vf fps=1 -c:v libx264 -crf 30 ";
+    // std::string command = "ffmpeg -r 1 -start_number 1658846185 -i 'AXIS_%d.jpg' -c:v libx264 -crf 30 ";
+    command += fileName;
+    std::cout << command << std::endl;
+    system(command.c_str());
 }
 void record10Seconds(std::string linkToStream, Onvif camera)
 {
@@ -151,28 +147,22 @@ void deleteFirstImage()
 }
 int main()
 {
-    Onvif axis("10.15.2.201", "seb", "sebseb");
+    // Onvif axis("10.15.2.201", "seb", "sebseb");
 
-    axis.GetProfiles();
-    std::string linkToImage = getLinkToImage(axis);
+    // axis.GetProfiles();
+    // std::string linkToImage = getLinkToImage(axis);
 
-    while (true)
-    {
+    // while (true)
+    // {
 
-        if (countImages("downloadedImages/") < 10)
-        {
-            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-            downloadImage(linkToImage, axis);
-            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-
-            std::cout << "it took " << timeToFinish << "[ms]"
-                      << " to download the image " << std::endl;
-        }
-        else
-            break;
-    }
+    //     if (countImages("downloadedImages/") < 61)
+    //     {
+    //         downloadImage(linkToImage, axis);
+    //     }
+    //     else
+    //         break;
+    // }
+    ffmpegPicturesToVid("axisvideo.mp4");
     return 0;
 }
 
