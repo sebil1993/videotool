@@ -1,0 +1,12 @@
+DATEINAME = name der kamera + timestamp
+
+while(laufender process)
+    speicherBild()
+    if(zähleBilder() > 5)
+        löscheErstesBild()
+
+    if(ctrl-c)
+        break;
+        
+
+

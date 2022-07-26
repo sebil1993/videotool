@@ -6,7 +6,9 @@
 #include <chrono>   // std::chrono::seconds
 #include <curl/curl.h>
 
+#include <deque>
 #include <cstdlib>
+#include <fstream>
 
 size_t writeCallback(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -21,6 +23,8 @@ size_t writeCallback(void *ptr, size_t size, size_t nmemb, void *userdata)
 }
 size_t writeImageToFile(std::string url, std::string fileName, std::string userPWD)
 {
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
     FILE *fp = fopen(fileName.c_str(), "wb");
     if (!fp)
     {
@@ -50,11 +54,34 @@ size_t writeImageToFile(std::string url, std::string fileName, std::string userP
         return false;
     }
 
-    curl_easy_cleanup(curl);
+    // curl_easy_cleanup(curl);
     fclose(fp);
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000 - timeToFinish));
     return true;
 }
 
+std::string GetStdoutFromCommand(std::string cmd)
+{
+
+    std::string data;
+    FILE *stream;
+    const int max_buffer = 256;
+    char buffer[max_buffer];
+    cmd.append(" 2>&1");
+
+    stream = popen(cmd.c_str(), "r");
+
+    if (stream)
+    {
+        while (!feof(stream))
+            if (fgets(buffer, max_buffer, stream) != NULL)
+                data.append(buffer);
+        pclose(stream);
+    }
+    return data;
+}
 std::string getLinkToImage(Onvif camera)
 {
     camera.GetProfiles();
@@ -68,94 +95,162 @@ std::string getLinkToStream(Onvif camera)
     return camera.GetStreamUri(profile);
 }
 
-void download10Images(std::string linkToImage, Onvif camera)
+void downloadImage(std::string linkToImage, Onvif camera)
 {
-    while (true)
-    {
-        if (time(NULL) % 10 == 0)
-        {
-            break;
-        }
-        else
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        }
-    }
-    for (int i = 0; i < 11; i++)
-    {
-        std::string fileName;
-        // std::string hi = "http://10.15.2.201/onvif-cgi/jpg/image.cgi?resolution=1920x1080&compression=90";
 
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        // time_t sysTime = time(NULL);
-        fileName = "downloadedImages/out";
-        fileName += std::to_string(i);
-        fileName += ".jpg";
-        // if (!download_jpeg(hi, fileName, "admin:password"))
-        // if (!writeImageToFile(linkToImage, fileName, "admin:password"))
-        if (!writeImageToFile(linkToImage, fileName, camera.getUserPWD()))
-        {
-            std::cout << "download failed" << std::endl;
-            return;
-        }
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-        std::cout << "it took " << timeToFinish << "[ms]"
-                  << " to download the image: " << fileName << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000 - timeToFinish));
+    // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::string fileName;
+    time_t sysTime = time(NULL);
+    fileName = "downloadedImages/AXIS_";
+    fileName += std::to_string(sysTime);
+    fileName += ".jpg";
+
+    if (!writeImageToFile(linkToImage, fileName, camera.getUserPWD()))
+    {
+        std::cout << "download failed" << std::endl;
+        return;
     }
+    // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    // long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    // std::cout << sysTime << "it took " << timeToFinish << "[ms]"
+    //           << " to download the image: " << fileName << std::endl;
+    // std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
+    // long long timeToFinish2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2 - begin).count();
+
+    // std::this_thread::sleep_for(std::chrono::milliseconds(1000 - timeToFinish2));
+}
+
+void ffmpegPicturesToVid()
+{
+    system("ffmpeg -hide_banner -y -r 1 -i downloadedImages/out%d.jpg -c:v libx264 -vf \"fps=1,format=yuv420p\" downloadedImages/out.mp4");
 }
 void record10Seconds(std::string linkToStream, Onvif camera)
 {
-    // std::cout << camera.getUserPWD() << std::endl;
     std::string command = "";
     command += "ffmpeg -y -i ";
-    // command += "\"";
     command += linkToStream;
-    // command += "\"";
     command += " -t 10 -c:v copy out2.mp4";
-    std::cout << "hier kommt der kommand: "<< command << std::endl;
     system(command.c_str());
 }
-void ffmpegPicturesToVid()
-{
-    system("ffmpeg -y -r 1 -i downloadedImages/out%d.jpg -c:v libx264 -vf \"fps=1,format=yuv420p\" downloadedImages/out.mp4");
-}
 
+int countImages(std::string path)
+{
+    path += "/*.jpg ";
+    std::string command = "ls -l ";
+    command += path;
+    command += "| wc -l";
+    int imageCount = std::stoi(GetStdoutFromCommand(command.c_str()));
+
+    return imageCount;
+}
+void deleteFirstImage()
+{
+    std::string firstFile = GetStdoutFromCommand("ls downloadedImages/*.jpg| head -1");
+    firstFile.pop_back();
+    std::remove(firstFile.c_str());
+}
 int main()
 {
-    // std::string time1 = Onvif::getISO8601DateAndTime(0);
-    // Onvif mobotix("10.15.100.200", "admin", "password");
     Onvif axis("10.15.2.201", "seb", "sebseb");
 
+    axis.GetProfiles();
     std::string linkToImage = getLinkToImage(axis);
-    std::cout << linkToImage << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    std::string linkToStream = getLinkToStream(axis);
-    std::cout << linkToStream << std::endl;
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    download10Images(linkToImage, axis);
+    while (true)
+    {
 
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+        if (countImages("downloadedImages/") < 10)
+        {
+            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    std::cout << "it took " << timeToFinish << "[ms]"
-              << " to finish method" << std::endl;
-    // system("cd downloadedImages");
-    ffmpegPicturesToVid();
-    std::string rtspWithAuth = "";
-    rtspWithAuth += "rtsp://";
-    rtspWithAuth += axis.getUserPWD();
-    rtspWithAuth += "@";
+            downloadImage(linkToImage, axis);
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 
-    linkToStream.replace(linkToStream.find("rtsp://"), sizeof("rtsp://") - 1, rtspWithAuth);
+            std::cout << "it took " << timeToFinish << "[ms]"
+                      << " to download the image " << std::endl;
+        }
+        else
+            break;
+    }
+    return 0;
+}
 
-    std::cout << linkToStream << std::endl;
-    record10Seconds(linkToStream, axis);
+/* FÜR SPÄTER
+
+    // std::remove("downloadedImages/.jpg");
+    // countImages("hi");
+    // std::deque<Onvif> onvif_array;
+    // Onvif axis("10.15.2.201", "seb", "sebseb");
+
+    // onvif_array.push_back(axis);
+    // // onvif_array.push_back(mobotix);
+
+    // std::cout << onvif_array[0].getProfile(0) << std::endl;
+    // // std::cout << onvif_array[1].getProfile(0) << std::endl;
+
+    // std::string linkToImage = getLinkToImage(onvif_array[0]);
+    // // std::string linkToImage2 = getLinkToImage(onvif_array[1]);
+    // std::cout << linkToImage << std::endl;
+    // // std::cout << linkToImage2 << std::endl;
+
+    // // std::string linkToStream = getLinkToStream(onvif_array[0]);
+    // // int retryCount = 0;
+    // while (true)
+    // {
+    //     // downloadImage(linkToImage,axis);
+
+    //     // retryCount += 1;
+    //     // if (retryCount > 10)
+    //     // {
+
+    //     //     std::cout << "hat nicht geklappt" << std::endl;
+    //     //     linkToStream = "couldnt perform operation";
+    //     // }
+    //     // std::cout << "retry" << std::endl;
+    //     // std::string linkToStream = getLinkToStream(onvif_array[0]);
+    //     // std::cout << "link to stream empty? => "<< linkToStream.empty() << std::endl;
+
+    //     // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    // }
+    // // std::cout << linkToStream << std::endl;
+    // // std::string linkToStream2 = getLinkToStream(onvif_array[1]);
+    // // while (linkToStream.empty())
+    // // {
+    // //     // retry
+    // //     std::cout << "retrying ..." << std::endl;
+    // //     std::string linkToStream = getLinkToStream(onvif_array[0]);
+    // //     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    // // }
+    // // std::cout << linkToStream << std::endl;
+    // // // std::cout << linkToStream2 << std::endl;
+    // // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    // // download10Images(linkToImage, onvif_array[0]);
+    // // // download10Images(linkToImage, onvif_array[1]);
+
+    // // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    // // long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+
+    // // std::cout << "it took " << timeToFinish << "[ms]"
+    // //           << " to finish method" << std::endl;
+    // // // system("cd downloadedImages");
+    // // // ffmpegPicturesToVid();
+    // // std::string rtspWithAuth = "";
+    // // rtspWithAuth += "rtsp://";
+    // // rtspWithAuth += axis.getUserPWD();
+    // // rtspWithAuth += "@";
+
+    // // linkToStream.replace(linkToStream.find("rtsp://"), sizeof("rtsp://") - 1, rtspWithAuth);
+
+    // // std::cout << linkToStream << std::endl;
+    // // // record10Seconds(linkToStream, axis);
 
     return 0;
 }
 
 //   rtsp://10.15.2.201/onvif-media/media.amp?profile=profile_1_h264&sessiontimeout=60&streamtype=unicast
 //   ffmpeg -i "rtsp://seb:sebseb@10.15.2.201/onvif-media/media.amp?profile=profile_1_h264&sessiontimeout=60&streamtype=unicast" -t 5 -c:v copy out.mp4
+
+
+*/
