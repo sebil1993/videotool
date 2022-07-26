@@ -10,6 +10,13 @@
 #include <cstdlib>
 #include <fstream>
 
+extern "C"
+{
+#include <libavutil/imgutils.h>
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
+}
+
 size_t writeCallback(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
     FILE *writeData = (FILE *)userdata;
@@ -111,21 +118,26 @@ void downloadImage(std::string linkToImage, Onvif camera)
     }
 }
 
-void ffmpegPicturesToVid(std::string fileName)
+void ffmpegPicturesToVid(std::string path, std::string fileName)
 {
-    // system("ffmpeg -hide_banner -y -r 1 -i downloadedImages/out%d.jpg -c:v libx264 -vf \"fps=1,format=yuv420p\" downloadedImages/out.mp4");
-    std::string command = "ffmpeg -y -r 1 -pattern_type glob -i 'downloadedImages/*.jpg' -vf fps=1 -c:v libx264 -crf 30 ";
-    // std::string command = "ffmpeg -r 1 -start_number 1658846185 -i 'AXIS_%d.jpg' -c:v libx264 -crf 30 ";
+    std::string command = "ffmpeg -y -r 1 -pattern_type glob -i '";
+    command += path;
+    command += "/*.jpg' -vf fps=1 -c:v libx264 -crf 40 ";
+    command += path;
+    command += "/";
     command += fileName;
     std::cout << command << std::endl;
     system(command.c_str());
 }
-void record10Seconds(std::string linkToStream, Onvif camera)
+void record10Seconds(std::string linkToStream, Onvif camera, std::string path, std::string fileName)
 {
-    std::string command = "";
-    command += "ffmpeg -y -i ";
+    std::string command = "ffmpeg -y -i '";
     command += linkToStream;
-    command += " -t 10 -c:v copy out2.mp4";
+    command += "' -t 10 -c:v copy ";
+    command += path;
+    command += "/";
+    command += fileName;
+    std::cout << command << std::endl;
     system(command.c_str());
 }
 
@@ -162,7 +174,23 @@ int main()
     //     else
     //         break;
     // }
-    ffmpegPicturesToVid("axisvideo.mp4");
+    // ffmpegPicturesToVid("downloadedImages","axisvideo.mp4");
+
+    Onvif axis("10.15.2.201", "seb", "sebseb");
+
+    std::string linkToStream = getLinkToStream(axis);
+
+
+    std::string rtspWithAuth = "";
+    rtspWithAuth += "rtsp://";
+    rtspWithAuth += axis.getUserPWD();
+    rtspWithAuth += "@";
+
+    linkToStream.replace(linkToStream.find("rtsp://"), sizeof("rtsp://") - 1, rtspWithAuth);
+
+
+
+    record10Seconds(linkToStream, axis, "downloadedImages","axisvideo2.mp4");
     return 0;
 }
 
