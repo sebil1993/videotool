@@ -7,6 +7,13 @@ while(laufender process)
 
     if(ctrl-c)
         break;
-        
+
+
+
+orderstruktur überlegen
+
+videodaten/KAMERAHERRSTELLER/MODELL/einzelne tage/einzelne stunden
+
+videodaten/STANDORT/KAMERA_MODELL/
 
 

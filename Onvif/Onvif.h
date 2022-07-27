@@ -9,23 +9,6 @@
 class Onvif
 {
 private:
-    // struct Profile
-    // {
-    //     // std::string name;
-    //     std::string token;
-    //     std::string snapshotUri;
-    //     std::string streamUri;
-    //     // struct videoEncoderConfiguration
-    //     // {
-    //     //     std::string encoderType;
-    //     //     std::string quality;
-    //     //     struct resolution
-    //     //     {
-    //     //         std::string width;
-    //     //         std::string height;
-    //     //     };
-    //     // };
-    // };
     std::string ipAdress;
     std::string username;
     std::string password;
@@ -34,6 +17,7 @@ private:
     std::vector<std::string> deviceInformation;
     std::vector<std::string> profiles;
     int deltaTime;
+    bool debug;
     std::string curlRequest(std::string soapMessage);
     pugi::xml_node getResponseBody(std::string curlResponse);
     std::vector<std::string> passwordDigest(std::string password, std::string timestamp);

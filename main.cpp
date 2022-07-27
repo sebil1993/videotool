@@ -104,9 +104,7 @@ std::string getLinkToStream(Onvif camera)
 
     long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 
-    std::cout << "camera.getstreamuri() took " << timeToFinish <<" ms" <<std::endl;
-
-
+    std::cout << "camera.getstreamuri() took " << timeToFinish << " ms" << std::endl;
 
     std::cout << "end of stream link" << std::endl;
     return streamLink;
@@ -170,16 +168,37 @@ void deleteFirstImage()
 int main()
 {
     // Onvif axis("10.15.2.201", "seb", "sebseb");
-
+    int counter = 0;
+    long long allTogether = 0;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    Onvif axis("10.15.2.201", "seb", "sebseb");
-    axis.getAllInfos();
+
+    for (int i = 0; i < 20; i++)
+    {
+        std::cout << i << " loop =>" << std::endl;
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        // Onvif axis("10.15.2.201", "seb", "sebseb");
+        Onvif mobotix("10.15.100.200", "admin", "password");
+        // axis.getAllInfos();
+
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        counter++;
+        if (i == 19)
+        {
+            mobotix.getAllInfos();
+        }
+        long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+        std::cout << "[IT TOOK " << timeToFinish << "ms to finish the LOOP]" << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000 - timeToFinish));
+        allTogether += timeToFinish;
+    }
+    std::cout << "average time => " << allTogether / counter << std::endl;
 
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
     long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+
     std::cout << "[IT TOOK " << timeToFinish << "ms to finish the MAIN]" << std::endl;
 
-    
     // axis.GetProfiles();
     // std::string linkToImage = getLinkToImage(axis);
 

@@ -11,6 +11,7 @@
 
 Onvif::Onvif()
 {
+    this->debug = false;
     this->ipAdress = "";
     this->username = "";
     this->password = "";
@@ -76,11 +77,12 @@ void Onvif::getAllInfos()
     std::cout << "]" << std::endl;
     std::cout << "[streamUri] => " << this->streamUri << std::endl;
     std::cout << "[snapshotUri] => " << this->snapshotUri << std::endl;
-    std::cout << "[deviceInformation] => " << std::endl;
+    std::cout << "[deviceInformation] [" << std::endl;
     for (std::string deviceInfo : this->deviceInformation)
     {
         std::cout << "[deviceInfo] => " << deviceInfo << std::endl;
     }
+    std::cout << "]" << std::endl;
     return;
 }
 std::string Onvif::getProfile(int i)
@@ -169,15 +171,22 @@ std::vector<std::string> Onvif::passwordDigest(std::string password, std::string
 
 std::string Onvif::curlRequest(std::string soapMessage)
 {
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
+    std::chrono::steady_clock::time_point begin;
+    if (this->debug)
+    {
+        begin = std::chrono::steady_clock::now();
+    }
     struct curl_slist *header = NULL;
     int soapMessageLength = soapMessage.length();
 
-    std::cout << std::endl
-              << "[GESENDETE SOAPREQUEST] =>" << std::endl
-              << soapMessage << std::endl
-              << std::endl;
+    if (this->debug)
+    {
+
+        std::cout << std::endl
+                  << "[GESENDETE SOAPREQUEST] =>" << std::endl
+                  << soapMessage << std::endl
+                  << std::endl;
+    }
 
     std::string contentLengthHeader = "Conent-Length: ";
     contentLengthHeader += std::to_string(soapMessageLength);
@@ -207,25 +216,34 @@ std::string Onvif::curlRequest(std::string soapMessage)
         curl_easy_setopt(curl, CURLOPT_POST, true);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, soapMessage.c_str());
 
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
 
+        curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+        std::string userpw = this->getUserPWD().c_str();
+        curl_easy_setopt(curl, CURLOPT_USERPWD, userpw.c_str());
+
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
+        if (this->debug)
+        {
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+            std::cout << "[IT TOOK " << timeToFinish << "ms to finish the job]" << std::endl;
+            std::cout << "[SOAPRESPONSE] " << readBuffer << std::endl;
+        }
 
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-        std::cout << "[IT TOOK " << timeToFinish << "ms to finish the job]" << std::endl;
-        std::cout << "[SOAPRESPONSE] " << readBuffer << std::endl;
         return readBuffer;
     }
     curl_easy_cleanup(curl);
-
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-    std::cout << "[IT TOOK " << timeToFinish << "ms to finish the job]" << std::endl;
+    if (this->debug)
+    {
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+        std::cout << "[IT TOOK " << timeToFinish << "ms to finish the job]" << std::endl;
+    }
 
     return "error couldn't curl";
 }
@@ -287,13 +305,14 @@ std::string Onvif::GetSystemDateAndTime()
 }
 std::vector<std::string> Onvif::GetProfiles()
 {
-    std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
+    // std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
     std::vector<std::string> profiles;
-    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetProfiles xmlns=\"http://www.onvif.org/ver10/media/wsdl\"/></s:Body></s:Envelope>";
-    data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
-    data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
-    data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
-    data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
+    // std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetProfiles xmlns=\"http://www.onvif.org/ver10/media/wsdl\"/></s:Body></s:Envelope>";
+    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetProfiles xmlns=\"http://www.onvif.org/ver10/media/wsdl\"/></s:Body></s:Envelope>";
+    // data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
+    // data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
+    // data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
+    // data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
 
     std::string curlResponse = curlRequest(data);
     pugi::xml_node getProfilesResponse = getResponseBody(curlResponse);
@@ -306,13 +325,14 @@ std::vector<std::string> Onvif::GetProfiles()
 
 std::string Onvif::GetStreamUri(std::string profile)
 {
-    std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
-    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetStreamUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><StreamSetup><Stream xmlns=\"http://www.onvif.org/ver10/schema\">RTP-Unicast</Stream><Transport xmlns=\"http://www.onvif.org/ver10/schema\"><Protocol>RTSP</Protocol></Transport></StreamSetup><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetStreamUri></s:Body></s:Envelope>";
+    // std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
+    // std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetStreamUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><StreamSetup><Stream xmlns=\"http://www.onvif.org/ver10/schema\">RTP-Unicast</Stream><Transport xmlns=\"http://www.onvif.org/ver10/schema\"><Protocol>RTSP</Protocol></Transport></StreamSetup><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetStreamUri></s:Body></s:Envelope>";
+    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetStreamUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><StreamSetup><Stream xmlns=\"http://www.onvif.org/ver10/schema\">RTP-Unicast</Stream><Transport xmlns=\"http://www.onvif.org/ver10/schema\"><Protocol>RTSP</Protocol></Transport></StreamSetup><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetStreamUri></s:Body></s:Envelope>";
 
-    data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
-    data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
-    data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
-    data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
+    // data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
+    // data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
+    // data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
+    // data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
     data.replace(data.find("$$PROFILETOKEN$$"), sizeof("$$PROFILETOKEN$$") - 1, profile);
 
     std::string curlResponse = curlRequest(data);
@@ -323,30 +343,32 @@ std::string Onvif::GetStreamUri(std::string profile)
 }
 std::string Onvif::GetSnapshotUri(std::string profile)
 {
-    std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
-    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetSnapshotUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetSnapshotUri></s:Body></s:Envelope>";
+    // std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
+    // std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetSnapshotUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetSnapshotUri></s:Body></s:Envelope>";
+    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetSnapshotUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetSnapshotUri></s:Body></s:Envelope>";
 
-    data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
-    data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
-    data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
-    data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
+    // data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
+    // data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
+    // data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
+    // data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
     data.replace(data.find("$$PROFILETOKEN$$"), sizeof("$$PROFILETOKEN$$") - 1, profile);
 
     std::string curlResponse = curlRequest(data);
     pugi::xml_node getSnapshotUriResponse = getResponseBody(curlResponse);
     this->snapshotUri = getSnapshotUriResponse.first_child().child("tt:Uri").text().as_string();
-    this->snapshotUri += "\n";
+    // this->snapshotUri += "\n";
     return this->snapshotUri;
 }
 std::vector<std::string> Onvif::GetDeviceInformation()
 {
-    std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
-    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetDeviceInformation xmlns=\"http://www.onvif.org/ver10/device/wsdl\"/></s:Body></s:Envelope>";
+    // std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
+    // std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetDeviceInformation xmlns=\"http://www.onvif.org/ver10/device/wsdl\"/></s:Body></s:Envelope>";
+    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetDeviceInformation xmlns=\"http://www.onvif.org/ver10/device/wsdl\"/></s:Body></s:Envelope>";
 
-    data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
-    data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
-    data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
-    data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
+    // data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
+    // data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
+    // data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
+    // data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
 
     std::string curlResponse = curlRequest(data);
     pugi::xml_node getDeviceInformationResponse = getResponseBody(curlResponse);

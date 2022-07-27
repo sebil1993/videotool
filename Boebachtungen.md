@@ -237,3 +237,34 @@ TODO
     wsdl dateien offline verfügbar machen (wahrscheinlich mit wsdl2h/gsoap++), nicht jedes netzwerk hat internetz
     datenbank erstellen für video und bilder dateien
 
+
+
+schaut man sich die möglichen filter und deren eigenschaften an, so kommen wir zum schluss, dass sich die framerate des aufgenommenen videos nicht während des aufnehmens ändern lässt.
+# -> es ist also nicht möglich, mit 1fps aufzunehmen und bei einem vorfall auf 24 fps umzuschalten
+man könnte mit einem buffer arbeiten, der sich eventuell die letzten 10 sekunden merkt und bei vorfall dann die bis dahin gespeicherten bilder zu einem video schneidet und das gebufferte video hintendran hängt, man müsste bestimmen, wie lange es dauert, bis sich der stream öffnet oder ihn die ganze zeit offen lassen, dieser wert wäre die zeit des buffers, jedoch lässt sich wahrscheinlich nicht so einfach bestimmen, wie lange der prozess braucht um zu starten
+evtl. auch so konfigurieren dass, dass die bilder die sowieso im buffer vorkommen würden, verworfen werden
+
+
+
+[setup video encoders and test performance](https://www.codeinsideout.com/blog/pi/set-up-camera/#v4l2-mjpeg-direct-copy-avi)
+
+
+
+eventuelles fehlerhandling einbauen, aber nocjh keine ahnung wie
+geht darum dass manchmal 2 bilder der gleichen sekunde gefecht werden
+->aber ist im grunde genommen egal, es ist ein frame und außerdem aktualisieren sich diese ja auch
+
+
+
+um herauszufinden ob ein gerät snapshoturi unterstützt könnte man entweder mit getsnapshoturi probieren oder aber mit getservicecapabilities/media nachschauen ob snapshoturi auf true gesetzt ist
+Bsp. AXIS -> unterstützt rotate aber es steht nicht da, ob es rotiert oder nicht ist
+
+
+beim authentifizieren sollte darauf geachtet werden, dass die kameras keine sonderzeichen in ihrem account oder passwort haben, denn obwohl man diese escapen kann, funktioniert dies bei der authentifizierung nicht
+
+
+PROBLEM: manchmal kommen nicht alle informationen an, die man benötigt, vorallem wenn diese funktionen nacheinander aufgerufen werden, dies führt dazu, dass man keine antworten bekommt, weil (wahrscheinlich) der CREATED-ZEITSTEMPEL abgelaufen ist und man sich nicht mehr authentifizieren kann
+    => gelöst dadurch, dass ich curl die authentifizierung übernehmen lasse, denn dieser wird immer schauen dass der zeitstempel bzw. die authentifizierung korrekt durchgeführt wird
+    -> eventuell wird zum problem, wenn wir kameras ohne webinterface haben und dort möglicherweise keine authentifizierung stattfinden kann, so müsste man auf die alte methode (Authentifzieren im Header) zurückgreifen
+
+    somit könnte bspw. digestPassword() rausfliegen
