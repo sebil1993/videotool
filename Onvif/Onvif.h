@@ -48,6 +48,7 @@ public:
     std::string getUser();
     std::string getUserPWD();
     std::string getSnapshotUri();
+    void getAllInfos();
     std::string GetSystemDateAndTime();
     std::string GetStreamUri(std::string profile);
     std::string GetSnapshotUri(std::string profile);

@@ -7,13 +7,14 @@
 #include <string>
 #include <vector>
 #include <pugixml.hpp>
+#include <deque>
 
 Onvif::Onvif()
 {
     this->ipAdress = "";
     this->username = "";
     this->password = "";
-    this->deltaTime = 5;
+    this->deltaTime = INT_MIN;
     this->profiles = {};
     this->streamUri = "";
     this->snapshotUri = "";
@@ -25,6 +26,12 @@ Onvif::Onvif(std::string ipAdress, std::string username, std::string password)
     this->ipAdress = ipAdress;
     this->username = username;
     this->password = password;
+    this->deltaTime = 5; // getISO8601 - CAMERA.GetSystemDateAndTime
+
+    this->GetProfiles();
+    this->GetStreamUri(this->profiles[0]);
+    this->GetSnapshotUri(this->profiles[0]);
+    this->GetDeviceInformation();
 }
 void Onvif::setIP(std::string ipAdress)
 {
@@ -55,7 +62,27 @@ std::string Onvif::getUserPWD()
     UserPWD += this->getPassword();
     return UserPWD;
 }
-
+void Onvif::getAllInfos()
+{
+    std::cout << "[ipAdress] => " << this->ipAdress << std::endl;
+    std::cout << "[username] => " << this->username << std::endl;
+    std::cout << "[password] => " << this->password << std::endl;
+    std::cout << "[deltaTime] => " << this->deltaTime << std::endl;
+    std::cout << "[profiles] [" << std::endl;
+    for (std::string profile : this->profiles)
+    {
+        std::cout << " => " << profile << std::endl;
+    }
+    std::cout << "]" << std::endl;
+    std::cout << "[streamUri] => " << this->streamUri << std::endl;
+    std::cout << "[snapshotUri] => " << this->snapshotUri << std::endl;
+    std::cout << "[deviceInformation] => " << std::endl;
+    for (std::string deviceInfo : this->deviceInformation)
+    {
+        std::cout << "[deviceInfo] => " << deviceInfo << std::endl;
+    }
+    return;
+}
 std::string Onvif::getProfile(int i)
 {
     if (this->profiles.size() <= 0)
@@ -142,8 +169,15 @@ std::vector<std::string> Onvif::passwordDigest(std::string password, std::string
 
 std::string Onvif::curlRequest(std::string soapMessage)
 {
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
     struct curl_slist *header = NULL;
     int soapMessageLength = soapMessage.length();
+
+    std::cout << std::endl
+              << "[GESENDETE SOAPREQUEST] =>" << std::endl
+              << soapMessage << std::endl
+              << std::endl;
 
     std::string contentLengthHeader = "Conent-Length: ";
     contentLengthHeader += std::to_string(soapMessageLength);
@@ -173,16 +207,26 @@ std::string Onvif::curlRequest(std::string soapMessage)
         curl_easy_setopt(curl, CURLOPT_POST, true);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, soapMessage.c_str());
 
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
 
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
+
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+        std::cout << "[IT TOOK " << timeToFinish << "ms to finish the job]" << std::endl;
+        std::cout << "[SOAPRESPONSE] " << readBuffer << std::endl;
         return readBuffer;
     }
     curl_easy_cleanup(curl);
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    std::cout << "[IT TOOK " << timeToFinish << "ms to finish the job]" << std::endl;
+
     return "error couldn't curl";
 }
 pugi::xml_node Onvif::getResponseBody(std::string curlResponse)
@@ -230,7 +274,7 @@ std::string Onvif::GetSystemDateAndTime()
     timeinfo->tm_mday = day;
     timeinfo->tm_hour = hour;
     timeinfo->tm_min = minute;
-    timeinfo->tm_sec = second + 5;
+    timeinfo->tm_sec = second + 3;
 
     char buf[25];
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S.000Z", timeinfo);
@@ -291,7 +335,7 @@ std::string Onvif::GetSnapshotUri(std::string profile)
     std::string curlResponse = curlRequest(data);
     pugi::xml_node getSnapshotUriResponse = getResponseBody(curlResponse);
     this->snapshotUri = getSnapshotUriResponse.first_child().child("tt:Uri").text().as_string();
-    // this->snapshotUri += "\n";
+    this->snapshotUri += "\n";
     return this->snapshotUri;
 }
 std::vector<std::string> Onvif::GetDeviceInformation()

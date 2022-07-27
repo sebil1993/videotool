@@ -30,8 +30,6 @@ size_t writeCallback(void *ptr, size_t size, size_t nmemb, void *userdata)
 }
 size_t writeImageToFile(std::string url, std::string fileName, std::string userPWD)
 {
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
     FILE *fp = fopen(fileName.c_str(), "wb");
     if (!fp)
     {
@@ -63,9 +61,6 @@ size_t writeImageToFile(std::string url, std::string fileName, std::string userP
 
     curl_easy_cleanup(curl);
     fclose(fp);
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000 - timeToFinish));
     return true;
 }
 
@@ -97,9 +92,24 @@ std::string getLinkToImage(Onvif camera)
 }
 std::string getLinkToStream(Onvif camera)
 {
+    std::cout << "start of stream link" << std::endl;
     camera.GetProfiles();
+
     std::string profile = camera.getProfile(0);
-    return camera.GetStreamUri(profile);
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    std::string streamLink = camera.GetStreamUri(profile);
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+
+    std::cout << "camera.getstreamuri() took " << timeToFinish <<" ms" <<std::endl;
+
+
+
+    std::cout << "end of stream link" << std::endl;
+    return streamLink;
 }
 
 void downloadImage(std::string linkToImage, Onvif camera)
@@ -161,36 +171,50 @@ int main()
 {
     // Onvif axis("10.15.2.201", "seb", "sebseb");
 
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    Onvif axis("10.15.2.201", "seb", "sebseb");
+    axis.getAllInfos();
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    std::cout << "[IT TOOK " << timeToFinish << "ms to finish the MAIN]" << std::endl;
+
+    
     // axis.GetProfiles();
     // std::string linkToImage = getLinkToImage(axis);
 
-    // while (true)
-    // {
+    // // while (true)
+    // // {
 
-    //     if (countImages("downloadedImages/") < 61)
-    //     {
-    //         downloadImage(linkToImage, axis);
-    //     }
-    //     else
-    //         break;
-    // }
-    // ffmpegPicturesToVid("downloadedImages","axisvideo.mp4");
+    // //     if (countImages("downloadedImages/") < 61)
+    // //     {
+    // //         downloadImage(linkToImage, axis);
+    // //     }
+    // //     else
+    // //         break;
+    // // }
+    // // ffmpegPicturesToVid("downloadedImages","axisvideo.mp4");
 
-    Onvif axis("10.15.2.201", "seb", "sebseb");
+    // // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    // std::string linkToStream = getLinkToStream(axis);
 
-    std::string linkToStream = getLinkToStream(axis);
+    // // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    // // long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 
+    // // std::cout << timeToFinish << std::endl;
+    // std::cout << linkToImage << std::endl << linkToStream << std::endl;
+    // std::string rtspWithAuth = "";
+    // rtspWithAuth += "rtsp://";
+    // rtspWithAuth += axis.getUserPWD();
+    // rtspWithAuth += "@";
 
-    std::string rtspWithAuth = "";
-    rtspWithAuth += "rtsp://";
-    rtspWithAuth += axis.getUserPWD();
-    rtspWithAuth += "@";
+    // linkToStream.replace(linkToStream.find("rtsp://"), sizeof("rtsp://") - 1, rtspWithAuth);
 
-    linkToStream.replace(linkToStream.find("rtsp://"), sizeof("rtsp://") - 1, rtspWithAuth);
+    // record10Seconds(linkToStream, axis, "downloadedImages","axisvideo2.mp4");
 
+    // std::cout << " done " << std::endl;
 
-
-    record10Seconds(linkToStream, axis, "downloadedImages","axisvideo2.mp4");
+    // system("ffmpeg -")
     return 0;
 }
 
