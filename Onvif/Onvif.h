@@ -16,13 +16,14 @@ private:
     std::string snapshotUri;
     std::vector<std::string> deviceInformation;
     std::vector<std::string> profiles;
-    int deltaTime;
+    // int deltaTime;
     bool debug;
     bool authInHeader;
     std::string curlRequest(std::string soapMessage);
     pugi::xml_node getResponseBody(std::string curlResponse);
     std::vector<std::string> passwordDigest(std::string password, std::string timestamp);
     std::string getPassword();
+    static std::string getISO8601DateAndTime();
 
 public:
     Onvif();
@@ -39,7 +40,7 @@ public:
     void getAllInfos();
 
     //Helper Functions
-    static std::string getISO8601DateAndTime();
+    void init(bool enableAuthInHeader, bool enableDebugMode);
 
     //ONVIF Functions
     std::string GetSystemDateAndTime();

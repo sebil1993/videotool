@@ -14,7 +14,6 @@
 
 Onvif::Onvif()
 {
-    this->debug = false;
     this->ipAdress = "";
     this->username = "";
     this->password = "";
@@ -23,8 +22,10 @@ Onvif::Onvif()
     this->snapshotUri = "";
     this->deviceInformation = {};
 
-    this->deltaTime = INT_MIN;
+    // this->deltaTime = INT_MIN;
+
     this->authInHeader = false;
+    this->debug = false;
 }
 
 Onvif::Onvif(std::string ipAdress, std::string username, std::string password) //, bool authInHeader, bool debug)
@@ -32,12 +33,15 @@ Onvif::Onvif(std::string ipAdress, std::string username, std::string password) /
     this->ipAdress = ipAdress;
     this->username = username;
     this->password = password;
-    this->deltaTime = 5; // getISO8601 - CAMERA.GetSystemDateAndTime
-
-    // this->GetProfiles();
-    // this->GetStreamUri(this->profiles[0]);
-    // this->GetSnapshotUri(this->profiles[0]);
-    // this->GetDeviceInformation();
+}
+void Onvif::init(bool enableAuthInHeader, bool enableDebugMode)
+{
+    this->setAuthInHeader(enableAuthInHeader);
+    this->setDebugMode(enableDebugMode);
+    this->GetProfiles();
+    this->GetStreamUri(this->profiles[0]);
+    this->GetSnapshotUri(this->profiles[0]);
+    this->GetDeviceInformation();
 }
 void Onvif::setDebugMode(bool enableDebugMode)
 {
@@ -81,7 +85,7 @@ void Onvif::getAllInfos()
     std::cout << "[username] => " << this->username << std::endl;
     std::cout << "[password] => " << this->password << std::endl;
     std::cout << "[authInHeader] => " << std::boolalpha << this->authInHeader << std::endl;
-    std::cout << "[deltaTime] => " << this->deltaTime << std::endl;
+    // std::cout << "[deltaTime] => " << this->deltaTime << std::endl;
     std::cout << "[profiles] [" << std::endl;
     for (std::string profile : this->profiles)
     {
@@ -274,7 +278,8 @@ std::string Onvif::curlRequest(std::string soapMessage)
             std::cout << "[IT TOOK " << timeToFinish << "ms to finish curlRequest()]" << std::endl;
             std::cout << "[SOAPRESPONSE] " << readBuffer << std::endl;
         }
-        if (this->authInHeader){
+        if (this->authInHeader)
+        {
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
         }
         return readBuffer;
@@ -287,7 +292,6 @@ std::string Onvif::curlRequest(std::string soapMessage)
         long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
         std::cout << "[IT TOOK " << timeToFinish << "ms to finish the job]" << std::endl;
     }
-    
 
     return "error couldn't curl";
 }
