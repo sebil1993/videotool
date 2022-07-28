@@ -260,7 +260,7 @@ um herauszufinden ob ein gerät snapshoturi unterstützt könnte man entweder mi
 Bsp. AXIS -> unterstützt rotate aber es steht nicht da, ob es rotiert oder nicht ist
 
 
-beim authentifizieren sollte darauf geachtet werden, dass die kameras keine sonderzeichen in ihrem account oder passwort haben, denn obwohl man diese escapen kann, funktioniert dies bei der authentifizierung nicht
+## beim authentifizieren sollte darauf geachtet werden, dass die kameras keine sonderzeichen in ihrem account oder passwort haben, denn obwohl man diese escapen kann, funktioniert dies bei der authentifizierung nicht
 
 
 PROBLEM: manchmal kommen nicht alle informationen an, die man benötigt, vorallem wenn diese funktionen nacheinander aufgerufen werden, dies führt dazu, dass man keine antworten bekommt, weil (wahrscheinlich) der CREATED-ZEITSTEMPEL abgelaufen ist und man sich nicht mehr authentifizieren kann
@@ -268,3 +268,13 @@ PROBLEM: manchmal kommen nicht alle informationen an, die man benötigt, voralle
     -> eventuell wird zum problem, wenn wir kameras ohne webinterface haben und dort möglicherweise keine authentifizierung stattfinden kann, so müsste man auf die alte methode (Authentifzieren im Header) zurückgreifen
 
     somit könnte bspw. digestPassword() rausfliegen
+was man aber auch machen könnte ist, eine durchschnittszeit zu ermitteln und diesen dann als deltaTime angeben,
+der wert wird dann von der computerzeit abgezogen und wäre somit immer im rahmen?
+
+
+schneidet man zwei videos zusammen die unterschiedliche fps haben so wird das hintere an die fps des forderen angepasst, so wird aus 60bildern/min und 1440bildern/minute ein 7minütiges video
+möglichkeiten:
+    entweder voriges video auf gleiche fps wie das danach
+        mit oder ohne setpts
+    buffer voriges video und speicher bei event
+    spiele 2 videos nacheinander ab

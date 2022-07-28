@@ -5,17 +5,11 @@
 #include <thread>   // std::this_thread::sleep_for
 #include <chrono>   // std::chrono::seconds
 #include <curl/curl.h>
+#include <ctime>
 
 #include <deque>
 #include <cstdlib>
 #include <fstream>
-
-extern "C"
-{
-#include <libavutil/imgutils.h>
-#include <libavcodec/avcodec.h>
-#include <libswscale/swscale.h>
-}
 
 size_t writeCallback(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -165,30 +159,35 @@ void deleteFirstImage()
     firstFile.pop_back();
     std::remove(firstFile.c_str());
 }
-int main()
+/*
+int initCamera(std::string ip, std::string acc, std::string pw)
 {
-    // Onvif axis("10.15.2.201", "seb", "sebseb");
     int counter = 0;
     long long allTogether = 0;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 10; i++)
     {
         std::cout << i << " loop =>" << std::endl;
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         // Onvif axis("10.15.2.201", "seb", "sebseb");
-        Onvif mobotix("10.15.100.200", "admin", "password");
+        Onvif camera(ip.c_str(), acc.c_str(), pw.c_str());
         // axis.getAllInfos();
 
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         counter++;
-        if (i == 19)
+        if (i == 9)
         {
-            mobotix.getAllInfos();
+            camera.getAllInfos();
         }
         long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
         std::cout << "[IT TOOK " << timeToFinish << "ms to finish the LOOP]" << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000 - timeToFinish));
+
+        if (!(timeToFinish > 1000))
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000 - timeToFinish));
+        }
+
         allTogether += timeToFinish;
     }
     std::cout << "average time => " << allTogether / counter << std::endl;
@@ -198,45 +197,76 @@ int main()
     long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 
     std::cout << "[IT TOOK " << timeToFinish << "ms to finish the MAIN]" << std::endl;
+    FÜR Download bilder
+        // axis.GetProfiles();
+        // std::string linkToImage = getLinkToImage(axis);
 
-    // axis.GetProfiles();
-    // std::string linkToImage = getLinkToImage(axis);
+        // // while (true)
+        // // {
 
-    // // while (true)
-    // // {
+        // //     if (countImages("downloadedImages/") < 61)
+        // //     {
+        // //         downloadImage(linkToImage, axis);
+        // //     }
+        // //     else
+        // //         break;
+        // // }
+        // // ffmpegPicturesToVid("downloadedImages","axisvideo.mp4");
 
-    // //     if (countImages("downloadedImages/") < 61)
-    // //     {
-    // //         downloadImage(linkToImage, axis);
-    // //     }
-    // //     else
-    // //         break;
-    // // }
-    // // ffmpegPicturesToVid("downloadedImages","axisvideo.mp4");
+        // // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        // std::string linkToStream = getLinkToStream(axis);
 
-    // // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    // std::string linkToStream = getLinkToStream(axis);
+        // // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        // // long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 
-    // // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    // // long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+        // // std::cout << timeToFinish << std::endl;
+        // std::cout << linkToImage << std::endl << linkToStream << std::endl;
+        // std::string rtspWithAuth = "";
+        // rtspWithAuth += "rtsp://";
+        // rtspWithAuth += axis.getUserPWD();
+        // rtspWithAuth += "@";
 
-    // // std::cout << timeToFinish << std::endl;
-    // std::cout << linkToImage << std::endl << linkToStream << std::endl;
-    // std::string rtspWithAuth = "";
-    // rtspWithAuth += "rtsp://";
-    // rtspWithAuth += axis.getUserPWD();
-    // rtspWithAuth += "@";
+        // linkToStream.replace(linkToStream.find("rtsp://"), sizeof("rtsp://") - 1, rtspWithAuth);
 
-    // linkToStream.replace(linkToStream.find("rtsp://"), sizeof("rtsp://") - 1, rtspWithAuth);
+        // record10Seconds(linkToStream, axis, "downloadedImages","axisvideo2.mp4");
 
-    // record10Seconds(linkToStream, axis, "downloadedImages","axisvideo2.mp4");
+        // std::cout << " done " << std::endl;
 
-    // std::cout << " done " << std::endl;
+        // system("ffmpeg -")
 
-    // system("ffmpeg -")
+    return 0;
+}*/
+
+int main()
+{
+    // Onvif mobotix("10.15.100.200", "admin", "password"); // serverCAM1
+    // Onvif mobotix("10.15.100.201", "admin", "password"); // serverCAM2
+    // Onvif axis("10.15.2.200", "kentix", "kentix");       // strassenCAM
+    // Onvif axis("10.15.2.201", "seb", "sebseb");          // parkplatzCAM
+    // Onvif axis("10.15.3.201", "", "");                   // webinarCAM
+
+    // Onvif axis("10.15.100.200", "admin", "password"); //, false, false);
+    bool authInHeader = false;
+    bool debugMode = false;
+    // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    Onvif axis("10.15.2.201", "seb", "sebseb");
+    for (int i = 0; i < 11; i++)
+    {
+        axis.setAuthInHeader(authInHeader);
+        axis.setDebugMode(debugMode);
+        axis.GetProfiles();
+        axis.GetStreamUri(axis.getProfile(0));
+        axis.GetSnapshotUri(axis.getProfile(0));
+        axis.GetDeviceInformation();
+        axis.getAllInfos();
+    }
+    // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    // long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    // std::cout << "[IT TOOK " << timeToFinish << "ms to finish the MAIN] with authInHeader = " << std::boolalpha << authInHeader << std::endl;
+
     return 0;
 }
-
 /* FÜR SPÄTER
 
     // std::remove("downloadedImages/.jpg");

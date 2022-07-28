@@ -18,6 +18,7 @@ private:
     std::vector<std::string> profiles;
     int deltaTime;
     bool debug;
+    bool authInHeader;
     std::string curlRequest(std::string soapMessage);
     pugi::xml_node getResponseBody(std::string curlResponse);
     std::vector<std::string> passwordDigest(std::string password, std::string timestamp);
@@ -27,16 +28,23 @@ public:
     Onvif();
     Onvif(std::string ipAdress, std::string username, std::string password);
     void setIP(std::string ipAdress);
+    void setDebugMode(bool enableDebugMode);
+    void setAuthInHeader(bool enableAuthInHeader);
+    
     std::string getIP();
     std::string getProfile(int i);
     std::string getUser();
     std::string getUserPWD();
     std::string getSnapshotUri();
     void getAllInfos();
+
+    //Helper Functions
+    static std::string getISO8601DateAndTime();
+
+    //ONVIF Functions
     std::string GetSystemDateAndTime();
     std::string GetStreamUri(std::string profile);
     std::string GetSnapshotUri(std::string profile);
-    static std::string getISO8601DateAndTime(int deltaTime);
     std::vector<std::string> GetProfiles();
     std::vector<std::string> GetDeviceInformation();
 };

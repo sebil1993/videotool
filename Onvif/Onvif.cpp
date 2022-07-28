@@ -1,6 +1,4 @@
 #include "Onvif.h"
-
-#include "Onvif.h"
 #include "sha1.hpp"
 #include <iostream>
 #include <curl/curl.h>
@@ -8,6 +6,11 @@
 #include <vector>
 #include <pugixml.hpp>
 #include <deque>
+#include <thread>
+
+#include <ctime>
+#include <chrono>
+#include <time.h>
 
 Onvif::Onvif()
 {
@@ -15,24 +18,34 @@ Onvif::Onvif()
     this->ipAdress = "";
     this->username = "";
     this->password = "";
-    this->deltaTime = INT_MIN;
     this->profiles = {};
     this->streamUri = "";
     this->snapshotUri = "";
     this->deviceInformation = {};
+
+    this->deltaTime = INT_MIN;
+    this->authInHeader = false;
 }
 
-Onvif::Onvif(std::string ipAdress, std::string username, std::string password)
+Onvif::Onvif(std::string ipAdress, std::string username, std::string password) //, bool authInHeader, bool debug)
 {
     this->ipAdress = ipAdress;
     this->username = username;
     this->password = password;
     this->deltaTime = 5; // getISO8601 - CAMERA.GetSystemDateAndTime
 
-    this->GetProfiles();
-    this->GetStreamUri(this->profiles[0]);
-    this->GetSnapshotUri(this->profiles[0]);
-    this->GetDeviceInformation();
+    // this->GetProfiles();
+    // this->GetStreamUri(this->profiles[0]);
+    // this->GetSnapshotUri(this->profiles[0]);
+    // this->GetDeviceInformation();
+}
+void Onvif::setDebugMode(bool enableDebugMode)
+{
+    this->debug = enableDebugMode;
+}
+void Onvif::setAuthInHeader(bool enableAuthInHeader)
+{
+    this->authInHeader = enableAuthInHeader;
 }
 void Onvif::setIP(std::string ipAdress)
 {
@@ -50,7 +63,6 @@ std::string Onvif::getPassword()
 {
     return this->password;
 }
-
 std::string Onvif::getUser()
 {
     return this->username;
@@ -68,6 +80,7 @@ void Onvif::getAllInfos()
     std::cout << "[ipAdress] => " << this->ipAdress << std::endl;
     std::cout << "[username] => " << this->username << std::endl;
     std::cout << "[password] => " << this->password << std::endl;
+    std::cout << "[authInHeader] => " << std::boolalpha << this->authInHeader << std::endl;
     std::cout << "[deltaTime] => " << this->deltaTime << std::endl;
     std::cout << "[profiles] [" << std::endl;
     for (std::string profile : this->profiles)
@@ -98,15 +111,39 @@ std::string Onvif::getProfile(int i)
     }
     return this->profiles[i];
 }
-
-// REFACTOR
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
     ((std::string *)userp)->append((char *)contents, size * nmemb);
     return size * nmemb;
 }
 
-std::string Onvif::getISO8601DateAndTime(int deltaTime = 0)
+/*time_t Onvif::calcDeltaTime()
+{
+    std::string cameraDateAndTime = this->GetSystemDateAndTime();
+    std::string userDateAndTime = this->getISO8601DateAndTime();
+
+    // std::cout << cameraDateAndTime << " " << userDateAndTime << std::endl;
+    cameraDateAndTime.replace(cameraDateAndTime.find("T"),sizeof("T")-1, " ");
+    userDateAndTime.replace(userDateAndTime.find("T"),sizeof("T")-1, " ");
+    // std::cout << cameraDateAndTime << " " << userDateAndTime << std::endl;
+    // // std::string timestampUser = this->getISO8601DateAndTime(0);
+
+    struct tm timeCam;
+    strptime(cameraDateAndTime.c_str(), "%Y-%m-%d %H:%M:%S", &timeCam);
+    time_t tCam = mktime(&timeCam);
+
+    struct tm timeUser;
+    strptime(userDateAndTime.c_str(), "%Y-%m-%d %H:%M:%S", &timeUser);
+    time_t tUser = mktime(&timeUser);
+
+    // std::cout << "difference is:" << tUser - tCam << std::endl;
+    // // std::cout << tCam << std::endl;
+    // return tCam;
+    this->deltaTime = tUser - tCam;
+    return this->deltaTime;
+}
+*/
+std::string Onvif::getISO8601DateAndTime()
 {
     time_t now;
     struct tm ts;
@@ -121,6 +158,7 @@ std::string Onvif::getISO8601DateAndTime(int deltaTime = 0)
     // std::cout << ISO8601 << std::endl;
     return ISO8601;
 }
+
 static std::string base64_encode(const std::string &in)
 {
     std::string out;
@@ -216,34 +254,40 @@ std::string Onvif::curlRequest(std::string soapMessage)
         curl_easy_setopt(curl, CURLOPT_POST, true);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, soapMessage.c_str());
 
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, this->debug);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
 
-        curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
-        std::string userpw = this->getUserPWD().c_str();
-        curl_easy_setopt(curl, CURLOPT_USERPWD, userpw.c_str());
-
+        if (this->authInHeader == false)
+        {
+            curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+            std::string userpw = this->getUserPWD().c_str();
+            curl_easy_setopt(curl, CURLOPT_USERPWD, userpw.c_str());
+        }
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
         if (this->debug)
         {
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
             long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-            std::cout << "[IT TOOK " << timeToFinish << "ms to finish the job]" << std::endl;
+            std::cout << "[IT TOOK " << timeToFinish << "ms to finish curlRequest()]" << std::endl;
             std::cout << "[SOAPRESPONSE] " << readBuffer << std::endl;
         }
-
+        if (this->authInHeader){
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        }
         return readBuffer;
     }
     curl_easy_cleanup(curl);
+    // curl_global_cleanup();
     if (this->debug)
     {
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
         std::cout << "[IT TOOK " << timeToFinish << "ms to finish the job]" << std::endl;
     }
+    
 
     return "error couldn't curl";
 }
@@ -292,7 +336,7 @@ std::string Onvif::GetSystemDateAndTime()
     timeinfo->tm_mday = day;
     timeinfo->tm_hour = hour;
     timeinfo->tm_min = minute;
-    timeinfo->tm_sec = second + 3;
+    timeinfo->tm_sec = second;
 
     char buf[25];
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S.000Z", timeinfo);
@@ -305,14 +349,24 @@ std::string Onvif::GetSystemDateAndTime()
 }
 std::vector<std::string> Onvif::GetProfiles()
 {
-    // std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
+    this->profiles.clear();
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    std::string data;
     std::vector<std::string> profiles;
-    // std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetProfiles xmlns=\"http://www.onvif.org/ver10/media/wsdl\"/></s:Body></s:Envelope>";
-    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetProfiles xmlns=\"http://www.onvif.org/ver10/media/wsdl\"/></s:Body></s:Envelope>";
-    // data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
-    // data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
-    // data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
-    // data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
+    if (this->authInHeader == true)
+    {
+        std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
+        data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetProfiles xmlns=\"http://www.onvif.org/ver10/media/wsdl\"/></s:Body></s:Envelope>";
+        data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
+        data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
+        data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
+        data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
+    }
+    else
+    {
+        data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetProfiles xmlns=\"http://www.onvif.org/ver10/media/wsdl\"/></s:Body></s:Envelope>";
+    }
 
     std::string curlResponse = curlRequest(data);
     pugi::xml_node getProfilesResponse = getResponseBody(curlResponse);
@@ -320,61 +374,101 @@ std::vector<std::string> Onvif::GetProfiles()
     {
         this->profiles.push_back(profile.attribute("token").value());
     }
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+
+    std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetProfiles()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
     return this->profiles;
 }
 
 std::string Onvif::GetStreamUri(std::string profile)
 {
-    // std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
-    // std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetStreamUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><StreamSetup><Stream xmlns=\"http://www.onvif.org/ver10/schema\">RTP-Unicast</Stream><Transport xmlns=\"http://www.onvif.org/ver10/schema\"><Protocol>RTSP</Protocol></Transport></StreamSetup><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetStreamUri></s:Body></s:Envelope>";
-    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetStreamUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><StreamSetup><Stream xmlns=\"http://www.onvif.org/ver10/schema\">RTP-Unicast</Stream><Transport xmlns=\"http://www.onvif.org/ver10/schema\"><Protocol>RTSP</Protocol></Transport></StreamSetup><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetStreamUri></s:Body></s:Envelope>";
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::string data;
+    if (this->authInHeader == true)
+    {
+        std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
+        data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetStreamUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><StreamSetup><Stream xmlns=\"http://www.onvif.org/ver10/schema\">RTP-Unicast</Stream><Transport xmlns=\"http://www.onvif.org/ver10/schema\"><Protocol>RTSP</Protocol></Transport></StreamSetup><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetStreamUri></s:Body></s:Envelope>";
+        data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
+        data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
+        data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
+        data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
+    }
+    else
+    {
+        data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetStreamUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><StreamSetup><Stream xmlns=\"http://www.onvif.org/ver10/schema\">RTP-Unicast</Stream><Transport xmlns=\"http://www.onvif.org/ver10/schema\"><Protocol>RTSP</Protocol></Transport></StreamSetup><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetStreamUri></s:Body></s:Envelope>";
+    }
 
-    // data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
-    // data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
-    // data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
-    // data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
     data.replace(data.find("$$PROFILETOKEN$$"), sizeof("$$PROFILETOKEN$$") - 1, profile);
 
     std::string curlResponse = curlRequest(data);
     pugi::xml_node getStreamUriResponse = getResponseBody(curlResponse);
 
     this->streamUri = getStreamUriResponse.first_child().child("tt:Uri").text().as_string();
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetStreamUri()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
+
     return this->streamUri;
 }
 std::string Onvif::GetSnapshotUri(std::string profile)
 {
-    // std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
-    // std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetSnapshotUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetSnapshotUri></s:Body></s:Envelope>";
-    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetSnapshotUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetSnapshotUri></s:Body></s:Envelope>";
-
-    // data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
-    // data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
-    // data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
-    // data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::string data;
+    if (this->authInHeader == true)
+    {
+        std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
+        data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetSnapshotUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetSnapshotUri></s:Body></s:Envelope>";
+        data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
+        data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
+        data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
+        data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
+    }
+    else
+    {
+        data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetSnapshotUri xmlns=\"http://www.onvif.org/ver10/media/wsdl\"><ProfileToken>$$PROFILETOKEN$$</ProfileToken></GetSnapshotUri></s:Body></s:Envelope>";
+    }
     data.replace(data.find("$$PROFILETOKEN$$"), sizeof("$$PROFILETOKEN$$") - 1, profile);
 
     std::string curlResponse = curlRequest(data);
     pugi::xml_node getSnapshotUriResponse = getResponseBody(curlResponse);
+
     this->snapshotUri = getSnapshotUriResponse.first_child().child("tt:Uri").text().as_string();
-    // this->snapshotUri += "\n";
+
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetSnapshotUri()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
+
     return this->snapshotUri;
 }
 std::vector<std::string> Onvif::GetDeviceInformation()
 {
-    // std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
-    // std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetDeviceInformation xmlns=\"http://www.onvif.org/ver10/device/wsdl\"/></s:Body></s:Envelope>";
-    std::string data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetDeviceInformation xmlns=\"http://www.onvif.org/ver10/device/wsdl\"/></s:Body></s:Envelope>";
-
-    // data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
-    // data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
-    // data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
-    // data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
-
+    this->deviceInformation.clear();
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::string data;
+    if (this->authInHeader == true)
+    {
+        std::vector<std::string> pwdigest = passwordDigest(this->password, this->GetSystemDateAndTime());
+        data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Header><wsse:Security s:mustUnderstand=\"1\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><UsernameToken><Username>$$USERNAME$$</Username><Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest\">$$PASSWORD$$</Password><Nonce EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\">$$NONCE$$</Nonce><Created xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">$$CREATED$$</Created></UsernameToken></wsse:Security></s:Header><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetDeviceInformation xmlns=\"http://www.onvif.org/ver10/device/wsdl\"/></s:Body></s:Envelope>";
+        data.replace(data.find("$$USERNAME$$"), sizeof("$$USERNAME$$") - 1, pwdigest[0]);
+        data.replace(data.find("$$PASSWORD$$"), sizeof("$$PASSWORD$$") - 1, pwdigest[1]);
+        data.replace(data.find("$$NONCE$$"), sizeof("$$NONCE$$") - 1, pwdigest[2]);
+        data.replace(data.find("$$CREATED$$"), sizeof("$$CREATED$$") - 1, pwdigest[3]);
+    }
+    else
+    {
+        data = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><s:Body xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"><GetDeviceInformation xmlns=\"http://www.onvif.org/ver10/device/wsdl\"/></s:Body></s:Envelope>";
+    }
     std::string curlResponse = curlRequest(data);
     pugi::xml_node getDeviceInformationResponse = getResponseBody(curlResponse);
 
     this->deviceInformation.push_back(getDeviceInformationResponse.child("tds:Manufacturer").text().as_string());
     this->deviceInformation.push_back(getDeviceInformationResponse.child("tds:Model").text().as_string());
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+    std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetDeviceInformation()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
 
     return this->deviceInformation;
 }
