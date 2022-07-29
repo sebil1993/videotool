@@ -126,7 +126,7 @@ void deleteFirstImage()
 void signalHandler(int signum)
 {
     std::cout << "Interrupt signal (" << signum << ") received.\n";
-
+    std::cout << "starting recording process" << std::endl;
     // cleanup and close up stuff here
     // terminate program
 
@@ -139,7 +139,8 @@ int main()
     Onvif axis("10.15.2.201", "seb", "sebseb");
     axis.init(false, false);
     axis.getAllInfos();
-    
+    int* sig = 0;
+
     signal(SIGINT, signalHandler);
 
     auto path = boost::filesystem::current_path();
