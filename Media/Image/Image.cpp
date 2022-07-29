@@ -1,7 +1,11 @@
 #include "Image.h"
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/directory.hpp>
+#include <boost/filesystem/path.hpp>
 
-
-
+#include "../../Onvif/Onvif.h"
+#include <thread>
+#include <chrono>
 
 size_t writeCallback(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -70,15 +74,19 @@ std::string GetStdoutFromCommand(std::string cmd)
     }
     return data;
 }
-void downloadImage(std::string linkToImage)
+void downloadImage(boost::filesystem::path path, std::string linkToImage)
 {
-
+    if (!boost::filesystem::exists(path))
+    {
+        boost::filesystem::create_directories(path);
+    }
     std::string fileName;
     time_t sysTime = time(NULL);
-    fileName = "downloadedImages/AXIS_";
+    fileName = path.c_str();
+    fileName += '/';
     fileName += std::to_string(sysTime);
     fileName += ".jpg";
-
+    std::cout << fileName << std::endl;
     if (!writeImageToFile(linkToImage, fileName, "seb:sebseb"))
     {
         std::cout << "download failed" << std::endl;
@@ -114,6 +122,41 @@ void deleteFirstImage()
     firstFile.pop_back();
     std::remove(firstFile.c_str());
 }
+
+void signalHandler(int signum)
+{
+    std::cout << "Interrupt signal (" << signum << ") received.\n";
+
+    // cleanup and close up stuff here
+    // terminate program
+
+    exit(signum);
+}
+
+int main()
+{
+    // register signal SIGINT and signal handler
+    Onvif axis("10.15.2.201", "seb", "sebseb");
+    axis.init(false, false);
+    axis.getAllInfos();
+    
+    signal(SIGINT, signalHandler);
+
+    auto path = boost::filesystem::current_path();
+    path += "/storage/cameras/";
+    path += axis.getUniqueDeviceName();
+
+    std::string snapshoturi = axis.getSnapshotUri();
+    while (1)
+    {
+        downloadImage(path, snapshoturi);
+        std::cout << "Going to sleep...." << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+
+    return 0;
+}
+
 /*
 int initCamera(std::string ip, std::string acc, std::string pw)
 {
@@ -191,5 +234,3 @@ int initCamera(std::string ip, std::string acc, std::string pw)
 
     return 0;
 }*/
-
-
