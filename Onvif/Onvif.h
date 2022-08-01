@@ -36,7 +36,9 @@ public:
     std::string getProfile(int i);
     std::string getUser();
     std::string getUserPWD();
+    std::string getStreamUri();
     std::string getSnapshotUri();
+    std::string getUniqueDeviceName();
     void getAllInfos();
 
     //Helper Functions

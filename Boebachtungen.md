@@ -241,7 +241,7 @@ TODO
 
 schaut man sich die möglichen filter und deren eigenschaften an, so kommen wir zum schluss, dass sich die framerate des aufgenommenen videos nicht während des aufnehmens ändern lässt.
 # -> es ist also nicht möglich, mit 1fps aufzunehmen und bei einem vorfall auf 24 fps umzuschalten
-man könnte mit einem buffer arbeiten, der sich eventuell die letzten 10 sekunden merkt und bei vorfall dann die bis dahin gespeicherten bilder zu einem video schneidet und das gebufferte video hintendran hängt, man müsste bestimmen, wie lange es dauert, bis sich der stream öffnet oder ihn die ganze zeit offen lassen, dieser wert wäre die zeit des buffers, jedoch lässt sich wahrscheinlich nicht so einfach bestimmen, wie lange der prozess braucht um zu starten
+man könnte mit einem buffer arbeiten, der sich eventuell die letzten 30 sekunden merkt und bei vorfall dann die bis dahin gespeicherten bilder zu einem video schneidet und das gebufferte video hintendran hängt, man müsste bestimmen, wie lange es dauert, bis sich der stream öffnet oder ihn die ganze zeit offen lassen, dieser wert wäre die zeit des buffers, jedoch lässt sich wahrscheinlich nicht so einfach bestimmen, wie lange der prozess braucht um zu starten
 evtl. auch so konfigurieren dass, dass die bilder die sowieso im buffer vorkommen würden, verworfen werden
 
 
@@ -267,9 +267,10 @@ PROBLEM: manchmal kommen nicht alle informationen an, die man benötigt, voralle
     => gelöst dadurch, dass ich curl die authentifizierung übernehmen lasse, denn dieser wird immer schauen dass der zeitstempel bzw. die authentifizierung korrekt durchgeführt wird
     -> eventuell wird zum problem, wenn wir kameras ohne webinterface haben und dort möglicherweise keine authentifizierung stattfinden kann, so müsste man auf die alte methode (Authentifzieren im Header) zurückgreifen
 
-    somit könnte bspw. digestPassword() rausfliegen
-was man aber auch machen könnte ist, eine durchschnittszeit zu ermitteln und diesen dann als deltaTime angeben,
-der wert wird dann von der computerzeit abgezogen und wäre somit immer im rahmen?
+somit könnte bspw. digestPassword() rausfliegen
+
+
+was man aber auch machen könnte ist, eine durchschnittszeit zu ermitteln und diesen dann als deltaTime angeben, der wert wird dann von der computerzeit abgezogen und wäre somit immer im rahmen?
 
 
 schneidet man zwei videos zusammen die unterschiedliche fps haben so wird das hintere an die fps des forderen angepasst, so wird aus 60bildern/min und 1440bildern/minute ein 7minütiges video
@@ -278,3 +279,24 @@ möglichkeiten:
         mit oder ohne setpts
     buffer voriges video und speicher bei event
     spiele 2 videos nacheinander ab
+
+
+
+[NEHME 4 SEKUNDEN AUF; DURCHGEHEND BIS 6 SEGMENTE ERREICHT SIND; DANACH ÜBERSCHREIBE DIE VORHANDENEN SEGMENTE](ffmpeg -i "rtsp://seb:sebseb@10.15.2.201/onvif-media/media.amp" -c:v libx264 -c:a aac -f segment -segment_time 4 -segment_wrap 6 -segment_list list.m3u8 -segment_list_size 6 seg%d.ts)
+
+
+an dieser stelle muss eine möglichkeit gefunden werden dass:
+    ein signal kommt => "event ist passiert, starte aufnahme"
+    in verbindung mit => "speicher den buffer"
+    ansonsten wird der buffer nachdem er seine 4s * 6 segmente erreicht hat nach hinten verworfen
+    => problem könnte sein, dass während man sich entschließt die datei abzuspeichern, die ersten segmente wieder überschrieben werden, so könnte es zu fehlern kommen und es könnte eine nicht brauchbare datei rauskommen
+
+wichtig für bericht wäre es zu erwähnen, dass passwörter keine sondernzeichen enthalten dürfen, wahrscheinlich wird dies über curl noch gehen, aber startet man einen prozess über die konsole, so werden die sonderzeichen des passwords nicht richtig escaped
+
+oder mit komplexen filtern arbeiten, sodass man die fps des vorigen videos an die fps der hinteren videos anpasst
+
+
+es lässt sich eine "bessere" lösung finden, indem man nur das in sein programm aufnimmt, was auch wirklich gebraucht wird.
+so lassen sich header inkludieren, die notwendig sind und diese direkt in C/C++ ansprechen
+    libavcodec
+    gst/gst.h

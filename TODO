@@ -17,3 +17,13 @@ videodaten/KAMERAHERRSTELLER/MODELL/einzelne tage/einzelne stunden
 videodaten/STANDORT/KAMERA_MODELL/
 
 
+zunächst über normales curl probieren zu initialisieren
+danach abchecken ob jede info ausgefüllt ist (zumindest name, streamuri vorhanden)
+    falls nicht
+    setze authInHeader auf true und probiere das gleiche
+        falls nicht
+        fehler aufgetreten
+        falls ja
+        kleine verzögerung, weil er sich zeit lässt
+    falls ja
+    schicke den stream oder snapshot link weiter an ihre funktionen

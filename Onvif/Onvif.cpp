@@ -22,12 +22,11 @@ Onvif::Onvif()
     this->snapshotUri = "";
     this->deviceInformation = {};
 
-    // this->deltaTime = INT_MIN;
 
     this->authInHeader = false;
     this->debug = false;
 }
-
+ 
 Onvif::Onvif(std::string ipAdress, std::string username, std::string password) //, bool authInHeader, bool debug)
 {
     this->ipAdress = ipAdress;
@@ -63,6 +62,10 @@ std::string Onvif::getSnapshotUri()
 {
     return this->snapshotUri;
 }
+std::string Onvif::getStreamUri()
+{
+    return this->streamUri;
+}
 std::string Onvif::getPassword()
 {
     return this->password;
@@ -86,18 +89,18 @@ void Onvif::getAllInfos()
     std::cout << "[password] => " << this->password << std::endl;
     std::cout << "[authInHeader] => " << std::boolalpha << this->authInHeader << std::endl;
     // std::cout << "[deltaTime] => " << this->deltaTime << std::endl;
-    std::cout << "[profiles] [" << std::endl;
+    std::cout << "[profiles] => [" << std::endl;
     for (std::string profile : this->profiles)
     {
-        std::cout << " => " << profile << std::endl;
+        std::cout << " | " << profile << std::endl;
     }
     std::cout << "]" << std::endl;
     std::cout << "[streamUri] => " << this->streamUri << std::endl;
     std::cout << "[snapshotUri] => " << this->snapshotUri << std::endl;
-    std::cout << "[deviceInformation] [" << std::endl;
+    std::cout << "[deviceInformation] => [" << std::endl;
     for (std::string deviceInfo : this->deviceInformation)
     {
-        std::cout << "[deviceInfo] => " << deviceInfo << std::endl;
+        std::cout << " | " << deviceInfo << std::endl;
     }
     std::cout << "]" << std::endl;
     return;
@@ -114,6 +117,16 @@ std::string Onvif::getProfile(int i)
         i = i % this->profiles.size();
     }
     return this->profiles[i];
+}
+
+std::string Onvif::getUniqueDeviceName(){
+    std::string uniqueName = "";
+    for(std::string deviceInfo: this->deviceInformation){
+        uniqueName += deviceInfo;
+        uniqueName += '_';
+    }
+    uniqueName.pop_back();
+    return uniqueName;
 }
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -470,6 +483,7 @@ std::vector<std::string> Onvif::GetDeviceInformation()
 
     this->deviceInformation.push_back(getDeviceInformationResponse.child("tds:Manufacturer").text().as_string());
     this->deviceInformation.push_back(getDeviceInformationResponse.child("tds:Model").text().as_string());
+    this->deviceInformation.push_back(getDeviceInformationResponse.child("tds:SerialNumber").text().as_string());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
     std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetDeviceInformation()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;

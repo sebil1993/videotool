@@ -2,13 +2,14 @@
 #include <iostream>
 #include <chrono>
 #include <time.h>
+#include <thread>
+#include <chrono>
 
 time_t ISO8601toTimestamp(std::string timestamp)
 {
     struct tm timeCam;
     strptime(timestamp.c_str(), "%Y-%m-%d %H:%M:%S", &timeCam);
     time_t t = mktime(&timeCam);
-
 
     return t;
 }
@@ -29,8 +30,7 @@ std::string getISO8601DateAndTime()
     return ISO8601;
 }
 
-int main()
-{
+/*
     std::string timeCamera = "2022-07-28 10:34:31.000Z";
     std::string timeUser = "2022-07-28 12:34:31.000Z";
 
@@ -39,8 +39,31 @@ int main()
 
     std::cout << "difference is:" << ISO8601toTimestamp(timeCamera) - ISO8601toTimestamp(timeUser) << std::endl;
 
-    // getISO8601DateAndTime();
-    //   << t2 << std::endl;
+*/
+using namespace std;
+
+void signalHandler(int signum)
+{
+    cout << "Interrupt signal (" << signum << ") received.\n";
+
+    // cleanup and close up stuff here
+    // terminate program
+
+    exit(signum);
+}
+
+int main()
+{
+    // register signal SIGINT and signal handler
+    signal(SIGINT, signalHandler);
+
+    while (1)
+    {
+        cout << "Going to sleep...." << endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+
+    return 0;
 }
 
 // int main ()
