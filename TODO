@@ -27,3 +27,38 @@ danach abchecken ob jede info ausgefüllt ist (zumindest name, streamuri vorhand
         kleine verzögerung, weil er sich zeit lässt
     falls ja
     schicke den stream oder snapshot link weiter an ihre funktionen
+
+
+schadensbegrenzung:
+um irgendwas für die bachelorthesis abgeben zu können muss ich entscheiden, was "wichtig" ist und was ich vernachlässigen kann
+
+das programm wird so aufgebaut, dass es als einzelner prozess gestartet werden kann
+
+es soll in der lage sein, einen stream zu buffern und auf signal diesen zu speichern
+    dazu gibts es mehrere möglichkeiten:
+        bilder sekündlich abgreifen, dann zu video zusammenschneiden
+
+das programm so aufteilen, dass ein teil den init übernimmt wenn die camera das erste mal hinzugefügt wird:
+    init()
+        probiere über curl
+        ansonsten
+        probiere über authinheader
+        ansonsten
+        fehler!
+    speichere infos in die datenbank
+    erstelle ordner für die kamera
+
+
+der andere teil kümmert sich um die vorhandenen kameras
+    prüft ob config vorhanden ist
+        falls nein -> führe initialisierung erneut aus
+    buffert videomaterial der letzten minute
+    speichert ab event alles ab und nimmt für eine weitere minute auf
+
+
+
+[SQLITE für CPP basics](https://videlais.com/2018/12/14/c-with-sqlite3-part-5-encapsulating-database-objects/)
+informieren über: 
+    SIGNALS
+    c++ database, aber evtl lässt sich das über php regeln?
+    => c++ muss trotzdem aus der datenbank lesen 

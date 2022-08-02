@@ -43,7 +43,7 @@ public:
 
     //Helper Functions
     void init(bool enableAuthInHeader, bool enableDebugMode);
-
+    bool check();
     //ONVIF Functions
     std::string GetSystemDateAndTime();
     std::string GetStreamUri(std::string profile);

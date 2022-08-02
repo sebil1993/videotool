@@ -22,11 +22,10 @@ Onvif::Onvif()
     this->snapshotUri = "";
     this->deviceInformation = {};
 
-
     this->authInHeader = false;
     this->debug = false;
 }
- 
+
 Onvif::Onvif(std::string ipAdress, std::string username, std::string password) //, bool authInHeader, bool debug)
 {
     this->ipAdress = ipAdress;
@@ -88,7 +87,7 @@ void Onvif::getAllInfos()
     std::cout << "[username] => " << this->username << std::endl;
     std::cout << "[password] => " << this->password << std::endl;
     std::cout << "[authInHeader] => " << std::boolalpha << this->authInHeader << std::endl;
-    // std::cout << "[deltaTime] => " << this->deltaTime << std::endl;
+    std::cout << "[debug] => " << this->debug << std::endl;
     std::cout << "[profiles] => [" << std::endl;
     for (std::string profile : this->profiles)
     {
@@ -119,9 +118,11 @@ std::string Onvif::getProfile(int i)
     return this->profiles[i];
 }
 
-std::string Onvif::getUniqueDeviceName(){
+std::string Onvif::getUniqueDeviceName()
+{
     std::string uniqueName = "";
-    for(std::string deviceInfo: this->deviceInformation){
+    for (std::string deviceInfo : this->deviceInformation)
+    {
         uniqueName += deviceInfo;
         uniqueName += '_';
     }
@@ -133,33 +134,16 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
     ((std::string *)userp)->append((char *)contents, size * nmemb);
     return size * nmemb;
 }
-
-/*time_t Onvif::calcDeltaTime()
+bool Onvif::check()
 {
-    std::string cameraDateAndTime = this->GetSystemDateAndTime();
-    std::string userDateAndTime = this->getISO8601DateAndTime();
+    if (this->streamUri.empty())
+        return false;
+    else if (this->snapshotUri.empty())
+        return false;
 
-    // std::cout << cameraDateAndTime << " " << userDateAndTime << std::endl;
-    cameraDateAndTime.replace(cameraDateAndTime.find("T"),sizeof("T")-1, " ");
-    userDateAndTime.replace(userDateAndTime.find("T"),sizeof("T")-1, " ");
-    // std::cout << cameraDateAndTime << " " << userDateAndTime << std::endl;
-    // // std::string timestampUser = this->getISO8601DateAndTime(0);
-
-    struct tm timeCam;
-    strptime(cameraDateAndTime.c_str(), "%Y-%m-%d %H:%M:%S", &timeCam);
-    time_t tCam = mktime(&timeCam);
-
-    struct tm timeUser;
-    strptime(userDateAndTime.c_str(), "%Y-%m-%d %H:%M:%S", &timeUser);
-    time_t tUser = mktime(&timeUser);
-
-    // std::cout << "difference is:" << tUser - tCam << std::endl;
-    // // std::cout << tCam << std::endl;
-    // return tCam;
-    this->deltaTime = tUser - tCam;
-    return this->deltaTime;
+    std::cout << "check successfull" << std::endl;
+    return true;
 }
-*/
 std::string Onvif::getISO8601DateAndTime()
 {
     time_t now;
@@ -167,12 +151,9 @@ std::string Onvif::getISO8601DateAndTime()
     char buf[28];
 
     time(&now);
-    // now -= deltaTime;
     ts = *localtime(&now);
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S.000Z", &ts);
-    // std::cout << mktime(&ts) << std::endl; => GIBT ZEIT ALAS ZEITSTEMPEL ZÜRÜCK
     std::string ISO8601(buf);
-    // std::cout << ISO8601 << std::endl;
     return ISO8601;
 }
 
@@ -359,15 +340,16 @@ std::string Onvif::GetSystemDateAndTime()
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S.000Z", timeinfo);
     std::string ISO8601(buf);
 
-    // TODO an dieser stelle wahrscheinlich noch die this->deltatime setzen (lokale zeit - gerätezeit)
-    // damit ich nicht jedes Mal nachfragen muss wie spät es ist und als fehlerhandling könnte man einbauen
-    // dass er es doch tut, wenn iwas nicht stimmt
     return ISO8601;
 }
 std::vector<std::string> Onvif::GetProfiles()
 {
     this->profiles.clear();
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin;
+    if (this->debug)
+    {
+        begin = std::chrono::steady_clock::now();
+    }
 
     std::string data;
     std::vector<std::string> profiles;
@@ -391,17 +373,22 @@ std::vector<std::string> Onvif::GetProfiles()
     {
         this->profiles.push_back(profile.attribute("token").value());
     }
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-
-    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-
-    std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetProfiles()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
+    if (this->debug)
+    {
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+        std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetProfiles()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
+    }
     return this->profiles;
 }
 
 std::string Onvif::GetStreamUri(std::string profile)
 {
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin;
+    if (this->debug)
+    {
+        begin = std::chrono::steady_clock::now();
+    }
     std::string data;
     if (this->authInHeader == true)
     {
@@ -423,16 +410,21 @@ std::string Onvif::GetStreamUri(std::string profile)
     pugi::xml_node getStreamUriResponse = getResponseBody(curlResponse);
 
     this->streamUri = getStreamUriResponse.first_child().child("tt:Uri").text().as_string();
-
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-    std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetStreamUri()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
-
+    if (this->debug)
+    {
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+        std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetStreamUri()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
+    }
     return this->streamUri;
 }
 std::string Onvif::GetSnapshotUri(std::string profile)
 {
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin;
+    if (this->debug)
+    {
+        begin = std::chrono::steady_clock::now();
+    }
     std::string data;
     if (this->authInHeader == true)
     {
@@ -453,17 +445,22 @@ std::string Onvif::GetSnapshotUri(std::string profile)
     pugi::xml_node getSnapshotUriResponse = getResponseBody(curlResponse);
 
     this->snapshotUri = getSnapshotUriResponse.first_child().child("tt:Uri").text().as_string();
-
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-    std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetSnapshotUri()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
-
+    if (this->debug)
+    {
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+        std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetSnapshotUri()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
+    }
     return this->snapshotUri;
 }
 std::vector<std::string> Onvif::GetDeviceInformation()
 {
     this->deviceInformation.clear();
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin;
+    if (this->debug)
+    {
+        begin = std::chrono::steady_clock::now();
+    }
     std::string data;
     if (this->authInHeader == true)
     {
@@ -484,9 +481,12 @@ std::vector<std::string> Onvif::GetDeviceInformation()
     this->deviceInformation.push_back(getDeviceInformationResponse.child("tds:Manufacturer").text().as_string());
     this->deviceInformation.push_back(getDeviceInformationResponse.child("tds:Model").text().as_string());
     this->deviceInformation.push_back(getDeviceInformationResponse.child("tds:SerialNumber").text().as_string());
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-    std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetDeviceInformation()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
+    if (this->debug)
+    {
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+        std::cout << "[IT TOOK " << timeToFinish << "ms to finish GetDeviceInformation()] with authInHeader = " << std::boolalpha << (bool)this->authInHeader << std::endl;
+    }
 
     return this->deviceInformation;
 }

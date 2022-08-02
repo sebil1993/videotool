@@ -144,6 +144,7 @@ int main()
     signal(SIGINT, signalHandler);
 
     auto path = boost::filesystem::current_path();
+
     path += "/storage/cameras/";
     path += axis.getUniqueDeviceName();
 

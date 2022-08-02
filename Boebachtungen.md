@@ -300,3 +300,4 @@ es lässt sich eine "bessere" lösung finden, indem man nur das in sein programm
 so lassen sich header inkludieren, die notwendig sind und diese direkt in C/C++ ansprechen
     libavcodec
     gst/gst.h
+das würde aber bedeuten, dass die "weiterentwicklungen" auch in die LGPL rutschen und somit offengelegt werden müssen, dies umgeht man, indem man ffmpeg als ein vorkompiliertes programm benutzt, so wäre es "abgekapselt" vom rest
