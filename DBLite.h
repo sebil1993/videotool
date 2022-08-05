@@ -2,6 +2,9 @@
 #include <string>
 #include <sqlite3.h>
 
+//https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm
+//https://videlais.com/2018/12/14/c-with-sqlite3-part-5-encapsulating-database-objects/
+
 using namespace std;
 
 class DBLite
@@ -49,19 +52,18 @@ private:
     }
 
 public:
-    DBLite()
+    DBLite(string databaseFileName = "example.db")
     {
         // Save the result of opening the file
-        rc = sqlite3_open("example.db", &db);
+        rc = sqlite3_open(databaseFileName.c_str(), &db);
 
         checkDBErrors();
     }
 
     void createTable()
     {
-
         // Erstes Mal Starten
-        data = "CREATE TABLE CAMERAS (ID INT PRIMARY KEY NOT NULL, IPADDRESS VARCHAR(255) NOT NULL, USERNAME VARCHAR(255) DEFAULT '', PASSWORD VARCHAR(255) DEFAULT '', STREAMURI VARCHAR(255) DEFAULT '', SNAPSHOTURI VARCHAR(255) DEFAULT '');";
+        data = "CREATE TABLE CAMERAS (ID INT PRIMARY KEY NOT NULL AUTO_INCREMENT, IPADDRESS VARCHAR(255) NOT NULL, USERNAME VARCHAR(255) DEFAULT '', PASSWORD VARCHAR(255) DEFAULT '', STREAMURI VARCHAR(255) DEFAULT '', SNAPSHOTURI VARCHAR(255) DEFAULT '');";
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
 
@@ -116,7 +118,10 @@ public:
         data = "SELECT * FROM 'CAMERAS';";
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
-
+    void showCamera()
+    {
+        data = "SELECT *"
+    }
     void deleteCamera(string ID)
     {
         data = "DELETE FROM 'CAMERAS' WHERE ID = '$ID$';";
@@ -130,3 +135,4 @@ public:
         sqlite3_close(db);
     }
 };
+

@@ -301,3 +301,11 @@ so lassen sich header inkludieren, die notwendig sind und diese direkt in C/C++ 
     libavcodec
     gst/gst.h
 das würde aber bedeuten, dass die "weiterentwicklungen" auch in die LGPL rutschen und somit offengelegt werden müssen, dies umgeht man, indem man ffmpeg als ein vorkompiliertes programm benutzt, so wäre es "abgekapselt" vom rest
+
+
+
+die sache ist, man kann bilder abgreifen ohne die snapshotURI zu haben, man muss lediglich FFMPEG mit einem fps starten und sagen, dass das output format .jpeg ist
+ffmpeg -i 'rtsp://seb:sebseb@10.15.2.201/onvif-media/media.amp?profile=profile_1_h264&sessiontimeout=60&streamtype=unicast' -r 1 'img-%03d.jpeg'
+
+
+das das video im obigen link auf dem kopf steht, müssen die special characters escaped werden

@@ -22,7 +22,7 @@ private:
     std::string curlRequest(std::string soapMessage);
     pugi::xml_node getResponseBody(std::string curlResponse);
     std::vector<std::string> passwordDigest(std::string password, std::string timestamp);
-    std::string getPassword();
+    // std::string getPassword();
     static std::string getISO8601DateAndTime();
 
 public:
@@ -35,6 +35,7 @@ public:
     std::string getIP();
     std::string getProfile(int i);
     std::string getUser();
+    std::string getPassword();
     std::string getUserPWD();
     std::string getStreamUri();
     std::string getSnapshotUri();
@@ -43,7 +44,7 @@ public:
 
     //Helper Functions
     void init(bool enableAuthInHeader, bool enableDebugMode);
-    bool check();
+    // bool check();
     //ONVIF Functions
     std::string GetSystemDateAndTime();
     std::string GetStreamUri(std::string profile);

@@ -134,16 +134,16 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
     ((std::string *)userp)->append((char *)contents, size * nmemb);
     return size * nmemb;
 }
-bool Onvif::check()
-{
-    if (this->streamUri.empty())
-        return false;
-    else if (this->snapshotUri.empty())
-        return false;
+// bool Onvif::check()
+// {
+//     if (this->streamUri.empty())
+//         return false;
+//     else if (this->snapshotUri.empty())
+//         return false;
 
-    std::cout << "check successfull" << std::endl;
-    return true;
-}
+//     std::cout << "check successfull" << std::endl;
+//     return true;
+// }
 std::string Onvif::getISO8601DateAndTime()
 {
     time_t now;

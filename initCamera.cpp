@@ -2,14 +2,13 @@
 #include <string>
 #include <iostream>
 #include "Onvif/Onvif.h"
+#include "DBLite.h"
 
 bool isValidIp(std::string IP)
 {
     boost::regex expr{"^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{1,2})(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{1,2})){3}(:((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([0-5]{1,5})|([0-9]{1,4})))?$|^$"};
     return boost::regex_match(IP, expr) << '\n';
 }
-
-void writeDataToFile(){}
 
 int main(int argc, char *argv[])
 {
@@ -56,7 +55,6 @@ int main(int argc, char *argv[])
     bool debug = false;
     if (argc > 4)
     {
-        std::cout << "kommen rein weil argc > 4 ist" << std::endl;
         if (strcmp(argv[4], "true") == 0)
         {
             authInHeader = true;
@@ -69,11 +67,12 @@ int main(int argc, char *argv[])
         }
     }
     Onvif camera(ip_address, username, password);
+    
     camera.init(authInHeader, debug);
 
-    if (camera.check())
+    if (camera.getStreamUri().size() > 10)
     {
-        std::cout << "check successfull" << std::endl;
+        std::cout << "first check successfull" << std::endl;
     }
     else
     {
@@ -81,6 +80,19 @@ int main(int argc, char *argv[])
         camera.init(authInHeader, debug);
     }
 
-    camera.getAllInfos();
+    if (camera.getStreamUri().size() > 10)
+    {
+        std::cout << "second check successfull" << std::endl;
+
+        // camera.getAllInfos();
+
+        DBLite sqlDB("database.db");
+        // sqlDB.createTable();
+    
+        // sqlDB.insertData("2",camera.getIP(),camera.getUser(),camera.getPassword(),camera.getStreamUri());
+
+        sqlDB.showTable();
+    }
+
     return 0;
 }
