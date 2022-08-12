@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
         }
     }
     Onvif camera(ip_address, username, password);
-    
+
     camera.init(authInHeader, debug);
 
     if (camera.getStreamUri().size() > 10)
@@ -84,15 +84,20 @@ int main(int argc, char *argv[])
     {
         std::cout << "second check successfull" << std::endl;
 
-        // camera.getAllInfos();
+        camera.getAllInfos();
 
-        DBLite sqlDB("database.db");
+        // DBLite sqlDB("database.db");
         // sqlDB.createTable();
-    
-        // sqlDB.insertData("2",camera.getIP(),camera.getUser(),camera.getPassword(),camera.getStreamUri());
 
-        sqlDB.showTable();
+        // sqlDB.insertData("2", camera.getIP(), camera.getUser(), camera.getPassword(), camera.getStreamUri());
+
+        // sqlDB.showTable();
     }
+    // DBLite sqlDB("database.db");
+    // sqlDB.createTable();
+
+    // sqlDB.insertData("2", camera.getIP(), camera.getUser(), camera.getPassword(), camera.getStreamUri());
+    // sqlDB.showTable();
 
     return 0;
 }

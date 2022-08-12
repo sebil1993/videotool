@@ -118,10 +118,10 @@ public:
         data = "SELECT * FROM 'CAMERAS';";
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
-    void showCamera()
-    {
-        data = "SELECT *"
-    }
+    // void showCamera()
+    // {
+    //     data = "SELECT *"
+    // }
     void deleteCamera(string ID)
     {
         data = "DELETE FROM 'CAMERAS' WHERE ID = '$ID$';";

@@ -309,3 +309,24 @@ ffmpeg -i 'rtsp://seb:sebseb@10.15.2.201/onvif-media/media.amp?profile=profile_1
 
 
 das das video im obigen link auf dem kopf steht, müssen die special characters escaped werden
+
+
+
+
+
+wer ist kentix, was wird gemacht
+projekt wieso kentix
+embedded system
+videoanbindung
+
+ziel vom projekt
+
+inspiration bei dem dude mit der video-html5 abgabe suchen
+codecs, streamingmöglichkeiten
+
+speicherplatz
+
+
+materialbeschreibung
+
+docker
