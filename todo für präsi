@@ -1,0 +1,11 @@
+ws discovery über php machen
+-> daten bereitstellen die ankommen
+
+//dbtest.cpp
+database erstellen in der die kameras gespeichert werden
+-> man muss reinschreiben können
+-> man muss id mitgeben können und die daten erhalten
+    -- entweder kriegt man nen string zurück 
+        --- könnte ich erreichen indem ich per systemcall das programm aufrufe
+    -- oder man gibt nen pointer mit, der die daten zurückgibt
+        --- programm müsste iwie das andere aufrufen

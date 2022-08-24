@@ -89,7 +89,6 @@ std::string Onvif::getUserPWD()
 }
 void Onvif::getAllInfos()
 {   
-    std::cout << "example timestmap" << this->getISO8601DateAndTime() << std::endl;
     std::cout << "[ipAdress] => " << this->ipAdress << std::endl;
     std::cout << "[username] => " << this->username << std::endl;
     std::cout << "[password] => " << this->password << std::endl;
@@ -136,6 +135,17 @@ std::string Onvif::getUniqueDeviceName()
     uniqueName.pop_back();
     return uniqueName;
 }
+std::string Onvif::getManufacturer(){
+    return this->deviceInformation[0];
+}
+std::string Onvif::getModel(){
+    return this->deviceInformation[1];
+}
+std::string Onvif::getSerialnumber(){
+    return this->deviceInformation[2];
+}
+
+
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
     ((std::string *)userp)->append((char *)contents, size * nmemb);

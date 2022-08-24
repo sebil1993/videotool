@@ -4,10 +4,9 @@
 
 int main()
 {
-    std::string ipAdress = "10.15.100.200";
-    std::string username = "admin";
-    std::string password = "password";
-    std::string timestamp = "2022-08-24T14:45:33.000Z";
+    std::string ipAdress;
+    std::string username;
+    std::string password;
 
     if (!boost::filesystem::exists("storage/database/database.db"))
     {
@@ -22,6 +21,8 @@ int main()
         std::cout << "database exists" << std::endl;
         DBLite sqlDB("storage/database/database.db");
         sqlDB.showTable("cameras");
+        sqlDB.closeDB();
     }
 
+    return 0;
 }

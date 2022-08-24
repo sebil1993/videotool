@@ -3,13 +3,14 @@
 #include <iostream>
 #include "Onvif/Onvif.h"
 #include "DBLite.h"
+#include <boost/filesystem.hpp>
 
 bool isValidIp(std::string IP)
 {
     boost::regex expr{"^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{1,2})(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[0-9]{1,2})){3}(:((6553[0-5])|(655[0-2][0-9])|(65[0-4][0-9]{2})|(6[0-4][0-9]{3})|([1-5][0-9]{4})|([0-5]{1,5})|([0-9]{1,4})))?$|^$"};
     return boost::regex_match(IP, expr) << '\n';
 }
-
+// init bereitet nur alles vor, sodass ein prozess gestartet werden kann der dann
 int main(int argc, char *argv[])
 {
     std::string ip_address, username, password;
@@ -89,26 +90,36 @@ int main(int argc, char *argv[])
         std::cout << "could not authenticate with curl, trying with SOAP" << std::endl;
         authInHeader = !authInHeader;
         camera.init(authInHeader, debug);
+        if (camera.getStreamUri().size() > 10)
+        {
+            std::cout << "second check successfull" << std::endl;
+        } else {
+            std::cout << "could not authenticate with SOAP" << std::endl;
+            std::cout << "aborting..." << std::endl;
+            return 0;
+        }
     }
 
-    if (camera.getStreamUri().size() > 10)
+    //check and write into database
+
+    if (!boost::filesystem::exists("storage/database/database.db"))
     {
-        std::cout << "second check successfull" << std::endl;
+        // init db und erstelle eventtypes
+        DBLite sqlDB("storage/database/database.db");
 
-        camera.getAllInfos();
-
-        // DBLite sqlDB("database.db");
-        // sqlDB.createTable();
-
-        // sqlDB.insertData("2", camera.getIP(), camera.getUser(), camera.getPassword(), camera.getStreamUri());
-
-        // sqlDB.showTable();
+        sqlDB.createTable();
+        sqlDB.insertEventtypes("Zutritt");
     }
-    // DBLite sqlDB("database.db");
-    // sqlDB.createTable();
+    else
+    {
+        std::cout << "database exists" << std::endl;
+        DBLite sqlDB("storage/database/database.db");
+        sqlDB.insertCameras(ip_address,username,password,camera.getManufacturer(),camera.getModel(),camera.getSerialnumber(),camera.getStreamUri());
+        sqlDB.showTable("cameras");
+        sqlDB.closeDB();
+    }
 
-    // sqlDB.insertData("2", camera.getIP(), camera.getUser(), camera.getPassword(), camera.getStreamUri());
-    // sqlDB.showTable();
+
 
     return 0;
 }

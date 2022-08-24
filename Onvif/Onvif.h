@@ -31,7 +31,7 @@ public:
     void setIP(std::string ipAdress);
     void setDebugMode(bool enableDebugMode);
     void setAuthInHeader(bool enableAuthInHeader);
-    
+
     std::string getIP();
     std::string getProfile(int i);
     std::string getUser();
@@ -40,12 +40,15 @@ public:
     std::string getStreamUri();
     std::string getSnapshotUri();
     std::string getUniqueDeviceName();
+    std::string getManufacturer();
+    std::string getModel();
+    std::string getSerialnumber();
     void getAllInfos();
 
-    //Helper Functions
+    // Helper Functions
     void init(bool enableAuthInHeader, bool enableDebugMode);
     // bool check();
-    //ONVIF Functions
+    // ONVIF Functions
     std::string GetSystemDateAndTime();
     std::string GetStreamUri(std::string profile);
     std::string GetSnapshotUri(std::string profile);
