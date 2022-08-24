@@ -34,11 +34,17 @@ Onvif::Onvif(std::string ipAdress, std::string username, std::string password) /
 }
 void Onvif::init(bool enableAuthInHeader, bool enableDebugMode)
 {
+    // setzen der authentifizierung; entweder im http header oder im soap header
     this->setAuthInHeader(enableAuthInHeader);
+    // setzen von debug mode;
     this->setDebugMode(enableDebugMode);
+    // beschaffen der Profile
     this->GetProfiles();
+    // die stream uri besorgen
     this->GetStreamUri(this->profiles[0]);
+    // die snapshot uri besorgen
     this->GetSnapshotUri(this->profiles[0]);
+    // beschaffen der information für ordnerstruktur
     this->GetDeviceInformation();
 }
 void Onvif::setDebugMode(bool enableDebugMode)
@@ -82,7 +88,8 @@ std::string Onvif::getUserPWD()
     return UserPWD;
 }
 void Onvif::getAllInfos()
-{
+{   
+    std::cout << "example timestmap" << this->getISO8601DateAndTime() << std::endl;
     std::cout << "[ipAdress] => " << this->ipAdress << std::endl;
     std::cout << "[username] => " << this->username << std::endl;
     std::cout << "[password] => " << this->password << std::endl;
@@ -418,6 +425,39 @@ std::string Onvif::GetStreamUri(std::string profile)
     }
     return this->streamUri;
 }
+
+/*
+
+std::vector<std::string> Onvif::passwordDigest(std::string password, std::string timestamp)
+{
+    srand(time(NULL));
+    std::string nonce = std::to_string(rand());
+    std::string passdigest;
+
+    passdigest += nonce;
+    passdigest += timestamp;
+    passdigest += password;
+
+    char hex[SHA1_HEX_SIZE];
+    char base64[SHA1_BASE64_SIZE];
+
+    sha1(passdigest.c_str())
+        .finalize()
+        .print_hex(hex)
+        .print_base64(base64);
+
+    std::vector<std::string> digestArray;
+    digestArray.push_back(getUser());
+    digestArray.push_back(base64);
+    digestArray.push_back(base64_encode(nonce));
+    digestArray.push_back(timestamp);
+
+    return digestArray;
+
+*/
+
+
+
 std::string Onvif::GetSnapshotUri(std::string profile)
 {
     std::chrono::steady_clock::time_point begin;

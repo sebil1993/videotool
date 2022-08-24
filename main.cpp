@@ -22,7 +22,6 @@ int main(int argc, char *argv[])
     {
         std::string ipAddress = argv[2];
     }
-    std::cout << ipAdress << std::endl;
     // if (!checkCamera(CameraIP))
     // {
     //     "Fehler: konnte nichts in DB finden";

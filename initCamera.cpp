@@ -55,17 +55,27 @@ int main(int argc, char *argv[])
     bool debug = false;
     if (argc > 4)
     {
-        if (strcmp(argv[4], "true") == 0)
+        if (strcmp(argv[4], "-auth") == 0)
         {
             authInHeader = true;
         }
-
-        if (argc > 5)
+        else if (strcmp(argv[4], "-debug") == 0)
         {
-            if (strcmp(argv[5], "true") == 0)
-                debug = true;
+            debug = true;
         }
     }
+    if (argc > 5)
+    {
+        if (strcmp(argv[5], "-debug") == 0)
+        {
+            debug = true;
+        }
+        else if (strcmp(argv[5], "-auth") == 0)
+        {
+            authInHeader = true;
+        }
+    }
+
     Onvif camera(ip_address, username, password);
 
     camera.init(authInHeader, debug);
@@ -76,6 +86,7 @@ int main(int argc, char *argv[])
     }
     else
     {
+        std::cout << "could not authenticate with curl, trying with SOAP" << std::endl;
         authInHeader = !authInHeader;
         camera.init(authInHeader, debug);
     }
