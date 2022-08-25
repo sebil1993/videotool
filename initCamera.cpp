@@ -17,7 +17,7 @@ DBLite checkForDB(std::string pathToDatabase)
     {
         // init db und erstelle eventtypes
         DBLite sqlDB(pathToDatabase.c_str());
-
+        std::cout << "creating database at: " << std::endl;
         sqlDB.createTable();
         sqlDB.insertEventtypes("Zutritt");
 
@@ -34,14 +34,12 @@ DBLite checkForDB(std::string pathToDatabase)
     }
 }
 
-// init bereitet nur alles vor, sodass ein prozess gestartet werden kann der dann
+// init bereitet nur alles vor, sodass ein prozess gestartet werden kann der dann aufnimmt
 int main(int argc, char *argv[])
 {
     DBLite db = checkForDB("storage/database/database.db");
-
-    db.showTable("cameras");
-
     std::string ip_address, username, password;
+
     // check if ip is given
     if (argc == 1)
     {
@@ -57,7 +55,7 @@ int main(int argc, char *argv[])
             ip_address = argv[1];
         else
         {
-            std::cout << "IP check failed" << std::endl;
+            std::cout << "IP not valid" << std::endl;
             exit(0);
         }
     }
@@ -66,94 +64,93 @@ int main(int argc, char *argv[])
         std::cout << "no input given" << std::endl;
         exit(0);
     }
-    // check if username and password are given
-    if (argc > 3)
-    {
-        username = argv[2];
-        password = argv[3];
-        if (strlen(argv[2]) == 0)
-        {
-            username = "";
-            std::cout << "username empty" << std::endl;
-            if (strlen(argv[3]) != 0)
-            {
-                std::cout << "password is set but username not" << std::endl;
-                exit(0);
-            }
-            password = "";
-        }
-    }
-    bool authInHeader = false;
-    bool debug = false;
-    // set authMode and debugMode
-    if (argc > 4)
-    {
-        if (strcmp(argv[4], "-auth") == 0)
-        {
-            authInHeader = true;
-        }
-        else if (strcmp(argv[4], "-debug") == 0)
-        {
-            debug = true;
-        }
-    }
-    if (argc > 5)
-    {
-        if (strcmp(argv[5], "-debug") == 0)
-        {
-            debug = true;
-        }
-        else if (strcmp(argv[5], "-auth") == 0)
-        {
-            authInHeader = true;
-        }
-    }
 
-    Onvif camera(ip_address, username, password);
-    // initialize camera with given input
-    camera.init(authInHeader, debug);
-    // check if StreamUri could be created
-    if (camera.getStreamUri().size() > 10)
+    // check if ip is in database
+    std::vector<std::string> cameraValues = db.searchEntry("cameras", "*", "ipaddress", ip_address);
+    if (cameraValues.size() > 0)
     {
-        std::cout << "first check successfull" << std::endl;
+        std::cout << "camera in database" << std::endl;
+        if (cameraValues[CAM_STREAMURI].size() > 0)
+        {
+            std::cout << "camera has streamuri" << std::endl;
+        }
     }
-    // if not, try other authMode
     else
     {
-        std::cout << "could not authenticate with curl, trying with SOAP" << std::endl;
-        authInHeader = !authInHeader;
+        std::cout << "camera not found in database" << std::endl;
+        // check if username and password are given
+        if (argc > 3)
+        {
+            username = argv[2];
+            password = argv[3];
+            if (strlen(argv[2]) == 0)
+            {
+                std::cout << "username empty" << std::endl;
+                username = "";
+                if (strlen(argv[3]) != 0)
+                {
+                    std::cout << "password is set but username not" << std::endl;
+                    exit(0);
+                }
+                password = "";
+            }
+        }
+        bool authInHeader = false;
+        bool debug = false;
+        // set authMode and debugMode
+        if (argc > 4)
+        {
+            if (strcmp(argv[4], "-auth") == 0)
+            {
+                authInHeader = true;
+            }
+            else if (strcmp(argv[4], "-debug") == 0)
+            {
+                debug = true;
+            }
+        }
+        if (argc > 5)
+        {
+            if (strcmp(argv[5], "-debug") == 0)
+            {
+                debug = true;
+            }
+            else if (strcmp(argv[5], "-auth") == 0)
+            {
+                authInHeader = true;
+            }
+        }
+
+        Onvif camera(ip_address, username, password);
+        // initialize camera with given input
         camera.init(authInHeader, debug);
-        // check if StreamUri could be created in other authMode
+        // check if StreamUri could be created
         if (camera.getStreamUri().size() > 10)
         {
-            std::cout << "second check successfull" << std::endl;
+            std::cout << "first check successfull" << std::endl;
         }
+        // if not, try other authMode
         else
         {
-            std::cout << "could not authenticate with SOAP" << std::endl;
-            std::cout << "aborting..." << std::endl;
-            return 0;
+            std::cout << "could not authenticate with curl, trying with SOAP" << std::endl;
+            authInHeader = !authInHeader;
+            camera.init(authInHeader, debug);
+            // check if StreamUri could be created in other authMode
+            if (camera.getStreamUri().size() > 10)
+            {
+                std::cout << "second check successfull" << std::endl;
+            }
+            else
+            {
+                std::cout << "could not authenticate with SOAP" << std::endl;
+                std::cout << "aborting..." << std::endl;
+                return 0;
+            }
         }
+        db.insertCameras(ip_address, username, password, camera.getManufacturer(), camera.getModel(), camera.getSerialnumber(), camera.getStreamUri());
     }
 
-    // check and write into database
-    sqlDB.showTable("cameras");
-    // if (!boost::filesystem::exists("storage/database/database.db"))
-    // {
-    //     // init db und erstelle eventtypes
-    //     DBLite sqlDB("storage/database/database.db");
-
-    //     sqlDB.createTable();
-    //     sqlDB.insertEventtypes("Zutritt");
-    // }
-    // else
-    // {
-    //     std::cout << "database exists" << std::endl;
-    //     DBLite sqlDB("storage/database/database.db");
-    //     sqlDB.insertCameras(ip_address,username,password,camera.getManufacturer(),camera.getModel(),camera.getSerialnumber(),camera.getStreamUri());
-    //     sqlDB.showTable("cameras");
-    //     sqlDB.closeDB();
-    // }
+    // db.showTable("cameras");
 
     return 0;
 }

@@ -1,11 +1,35 @@
 #include <iostream>
 #include <string>
 #include <sqlite3.h>
+#include <vector>
 
 // https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm
 // https://videlais.com/2018/12/14/c-with-sqlite3-part-5-encapsulating-database-objects/
-
+// https://www.proggen.org/doku.php?id=dbs:sqlite:libsqlite3:communicate:sqlite3_prepared
 using namespace std;
+
+#define CAM_IPADDRESS 1
+#define CAM_USERNAME 2
+#define CAM_PASSWORD 3
+#define CAM_MANUFACTURER 4
+#define CAM_MODEL 5
+#define CAM_SERIALNUMBER 6
+#define CAM_STREAMURI 7
+#define CAM_SNAPSHOTURI 8
+
+
+
+// struct camera
+// {
+//     int id;
+//     std::string ipaddress;
+//     std::string username;
+//     std::string password;
+//     std::string manufacturer;
+//     std::string model;
+//     std::string serialnumber;
+//     std::string streamuri;
+// };
 
 class DBLite
 {
@@ -26,17 +50,10 @@ private:
     // Create a callback function
     static int callback(void *NotUsed, int argc, char **argv, char **azColName)
     {
-
-        // int argc: holds the number of results
-        // (array) azColName: holds each column returned
-        // (array) argv: holds each value
         for (int i = 0; i < argc; i++)
         {
-            // Show column name, value, and newline
             cout << azColName[i] << ": " << argv[i] << endl;
         }
-
-        cout << endl;
         return 0;
     }
 
@@ -65,7 +82,10 @@ public:
 
         checkDBErrors();
     }
-
+    void hihi(std::string text)
+    {
+        std::cout << text << std::endl;
+    }
     void createTable()
     {
         // Erstes Mal Starten
@@ -76,7 +96,7 @@ public:
         data = "CREATE TABLE events (ID INTEGER PRIMARY KEY AUTOINCREMENT, timestamp datetime default current_timestamp, camera_id int, eventtype_id int, foreign key (camera_id) references cameras (id), foreign key (eventtype_id) references eventtypes (id));";
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
-    //insert cameras 
+    // insert cameras
     void insertCameras(string IPAddress)
     {
         data = "INSERT INTO CAMERAS ('ipaddress') VALUES ('$IPAddress$');";
@@ -111,7 +131,7 @@ public:
         std::cout << data << endl;
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
-    
+
     void insertEvent(int camera_id, int eventtype_id)
     {
         data = "INSERT INTO events(camera_id, eventtype_id) VALUES('$camera_id$', '$eventtype_id$');";
@@ -137,14 +157,53 @@ public:
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
 
-    //entweder id oder ip mitgeben
+    // entweder id oder ip mitgeben
     void deleteCamera(int ID)
     {
         data = "DELETE FROM CAMERAS WHERE ID = '$ID$';";
-        
+
         data.replace(data.find("$ID$"), sizeof("$ID$") - 1, to_string(ID).c_str());
 
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
+    }
+
+    std::vector<std::string> searchEntry(string table, string columns, string column, string value)
+    {
+
+        data = "SELECT $COLUMNS$ FROM $TABLE$ \r\n";
+        data += "WHERE $COLUMN$ = '$VALUE$'";
+
+        data.replace(data.find("$COLUMNS$"), sizeof("$COLUMNS$") - 1, columns.c_str());
+        data.replace(data.find("$TABLE$"), sizeof("$TABLE$") - 1, table.c_str());
+        data.replace(data.find("$COLUMN$"), sizeof("$COLUMN$") - 1, column.c_str());
+        data.replace(data.find("$VALUE$"), sizeof("$VALUE$") - 1, value.c_str());
+
+        sqlite3_stmt *stmt;
+        sqlite3_prepare_v2(db, data.c_str(), -1, &stmt, NULL);
+
+        std::string col_name, col_value;
+        std::vector<std::string> entryValues;
+
+        int cols = sqlite3_column_count(stmt);
+
+        // geht jede row durch id1, id2, id..
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        { // geht jede spalte einer row durch
+            for (int i = 0; i < cols; i++)
+            {
+                if (sqlite3_column_name(stmt, i))
+                {
+                    col_name = const_cast<const char *>(sqlite3_column_name(stmt, i));
+                }
+                if (sqlite3_column_text(stmt, i))
+                {
+                    col_value = reinterpret_cast<const char *>(sqlite3_column_text(stmt, i));
+                    entryValues.push_back(col_value);
+                }
+            }
+        }
+        sqlite3_finalize(stmt);
+        return entryValues;
     }
 
     void closeDB()
@@ -152,3 +211,40 @@ public:
         sqlite3_close(db);
     }
 };
+
+/*
+sqlite3* dbs;
+string command;
+sqlite3_stmt *stmt;
+string col_name;
+string col_value;
+int cols;
+
+cout << "SQL Kommando eingeben:";
+getline(cin,command);
+
+if (sqlite3_prepare_v2(dbs,command.c_str(),command.size(),&stmt,0)!=SQLITE_OK)
+{
+   cerr << "SQL-Fehler: " << sqlite3_errmsg(dbs) << endl;
+}
+cols = sqlite3_column_count(stmt);
+
+while (sqlite3_step(stmt) == SQLITE_ROW)
+{
+   for (int i=0;i<cols;i++)
+   {
+     if(sqlite3_column_name(stmt,i))
+       col_name = const_cast<const char*>(sqlite3_column_name(stmt,i));
+     else col_name = "LEER";
+
+     if (sqlite3_column_text(stmt,i))
+       col_value = reinterpret_cast<const char*>(sqlite3_column_text(stmt,i));
+     else col_value = "LEER";
+
+     cout << "Inhaltstyp: " << sqlite3_column_type(stmt,i) << " ";
+     cout << col_name << ": ";
+     cout << col_value << endl;
+    }
+}
+sqlite3_finalize(stmt);
+*/

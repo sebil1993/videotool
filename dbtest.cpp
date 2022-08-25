@@ -16,7 +16,7 @@ DBLite checkForDB(std::string pathToDatabase)
     }
     else
     {
-        std::cout << "database exists" << std::endl;
+        // std::cout << "database exists" << std::endl;
         DBLite sqlDB(pathToDatabase.c_str());
         // sqlDB.showTable("cameras");
         // sqlDB.closeDB();
@@ -29,7 +29,10 @@ int main()
 {
     DBLite db = checkForDB("storage/database/database.db");
 
-    db.showTable("cameras");
+    // db.showTable("cameras");
+    // std::string searchQuery = "ipaddress,username,password";
+    std::string searchQuery = "*";
+    db.searchEntry("cameras",searchQuery,"id","4");
 
     return 0;
 }
