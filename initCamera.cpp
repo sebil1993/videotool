@@ -1,3 +1,7 @@
+// init bereitet nur alles vor
+// hierbei wird ip, acc und pw mitgegeben und anhand der ip wird überprüft ob die kamera in
+// der datenbank liegt. Sollte das nicht der fall sein, so wird die kamera initialisiert und
+// die so erhaltenen werte werden in die datenbank geschrieben. Ansonsten wird beendet.
 #include <boost/regex.hpp>
 #include <string>
 #include <iostream>
@@ -27,8 +31,6 @@ DBLite checkForDB(std::string pathToDatabase)
     {
         std::cout << "database exists" << std::endl;
         DBLite sqlDB(pathToDatabase.c_str());
-        // sqlDB.showTable("cameras");
-        // sqlDB.closeDB();
 
         return sqlDB;
     }
@@ -158,8 +160,6 @@ void createCameraEntry(DBLite &db, std::vector<std::string> inputs, std::vector<
     db.insertCameras(camera.getIP(), camera.getUser(), camera.getPassword(), camera.getManufacturer(), camera.getModel(), camera.getSerialnumber(), camera.getStreamUri());
 }
 
-// init bereitet nur alles vor, sodass ein prozess gestartet werden kann der dann aufnimmt
-
 int main(int argc, char *argv[])
 {
     DBLite db = checkForDB("storage/database/database.db");
@@ -175,38 +175,14 @@ int main(int argc, char *argv[])
         createCameraEntry(db, inputs, settings);
     }
 
-    db.showTable("cameras");
-    return 0;
-
-    //     // initialize camera with given input
-    //     camera.init(authInHeader, debug);
-    //     // check if StreamUri could be created
-    //     if (camera.getStreamUri().size() > 10)
-    //     {
-    //         std::cout << "first check successfull" << std::endl;
-    //     }
-    //     // if not, try other authMode
-    //     else
-    //     {
-    //         std::cout << "could not authenticate with curl, trying with SOAP" << std::endl;
-    //         authInHeader = !authInHeader;
-    //         camera.init(authInHeader, debug);
-    //         // check if StreamUri could be created in other authMode
-    //         if (camera.getStreamUri().size() > 10)
-    //         {
-    //             std::cout << "second check successfull" << std::endl;
-    //         }
-    //         else
-    //         {
-    //             std::cout << "could not authenticate with SOAP" << std::endl;
-    //             std::cout << "aborting..." << std::endl;
-    //             return 0;
-    //         }
-    //     }
-    //     db.insertCameras(ip_address, username, password, camera.getManufacturer(), camera.getModel(), camera.getSerialnumber(), camera.getStreamUri());
-    // }
-
-    // db.showTable("cameras");
-
+    for (int i = 0; i < argc; i++)
+    {
+        if (strcmp(argv[i], "-show_table"))
+        {
+            db.showTable("cameras");
+            break;
+        }
+    }
+    
     return 0;
 }
