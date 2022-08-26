@@ -6,9 +6,6 @@
 #include <curl/curl.h>
 #include <ctime>
 
-// #include <thread>
-// #include <deque>
-
 #include <cstdlib>
 #include <fstream>
 
@@ -22,30 +19,32 @@ int main(int argc, char *argv[])
     {
         std::string ipAddress = argv[2];
     }
-    // if (!checkCamera(CameraIP))
-    // {
-    //     "Fehler: konnte nichts in DB finden";
-    //     "Bitte %username und %password angeben";
-    //     if (!initCamera(username, password))
-    //     {
-    //         "Fehler: konnte nicht initialisieren";
-    //         exit();
-    //     }
-    // }
-
-    // process(camera.streamlink){
-    //     starteFFMPEG(camera.streamlink){
-    //         while(buffering){
-    //             nehmeDieVideosAufInBuffer();
-    //             wennBufferVollVerwerfe();
-    //             if(Signal){
-    //                 system(cat(dateien_playlist))
-    //                 starteFFMPEG(camera.streamlink, 1min)
-    //             }
-    //         }
-    //     }
-    // }
 }
+
+// if (!checkCamera(CameraIP))
+// {
+//     "Fehler: konnte nichts in DB finden";
+//     "Bitte %username und %password angeben";
+//     if (!initCamera(username, password))
+//     {
+//         "Fehler: konnte nicht initialisieren";
+//         exit();
+//     }
+// }
+
+// process(camera.streamlink){
+//     starteFFMPEG(camera.streamlink){
+//         while(buffering){
+//             nehmeDieVideosAufInBuffer();
+//             wennBufferVollVerwerfe();
+//             if(Signal){
+//                 system(cat(dateien_playlist))
+//                 starteFFMPEG(camera.streamlink, 1min)
+//             }
+//         }
+//     }
+// }
+
 // (̅_̅_̅((̅_̅_ ̅_̅_̅_̅_̅()
 // Onvif mobotix("10.15.100.200", "admin", "password"); // serverCAM1
 // Onvif mobotix("10.15.100.201", "admin", "password"); // serverCAM2
