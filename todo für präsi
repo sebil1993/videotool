@@ -9,3 +9,31 @@ database erstellen in der die kameras gespeichert werden
         --- könnte ich erreichen indem ich per systemcall das programm aufrufe
     -- oder man gibt nen pointer mit, der die daten zurückgibt
         --- programm müsste iwie das andere aufrufen
+    -- oder ich erstelle in db ein onvif objekt welches die daten aufweist
+
+was ich machen kann:
+    checken ob db vorliegt
+    aus einem bestimmten table, columns auswählen, bei dem man dann auf 1 column einen wert sucht
+    -> mache funktion die alle columns von camera zurückgibt
+    -> 2 array (1. array = namen, 2. array = werte)
+        -> suche im 1. array nach streamuri-name 
+           // evtl. unnötig wenn ich immer die gleichen werte habe
+           // so könnte ich einfach schauen ob in array[streamuri] der wert vorliegt
+           // die frage ist aber, ob ich einen wrapper für diese suchfunktion schreibe, wo ich ggf.
+           // abchecken kann ob array[suchwort] vorliegt
+        -> gebe mir streamuri-wert aus dem 2. array zurück
+
+
+
+
+//GEHT
+ffmpeg -t 00:00:30 -i 'rtsp://10.15.100.200/h264' -c:v libx264 -flags 
++cgop -g 20 -hls_flags delete_segments -hls_list_size 2 cammobotix.m3u8
+
+//andere möglichkeit 
+ffmpeg -i 'rtsp://10.15.100.200/h264' -c:v libx264 -flags +cgop -g 20 
+-f segment -segment_time 4 -segment_list playlist.m3u8 playlist%03d.ts
+
+//andere
+ffmpeg -i 'rtsp://10.15.100.200/h264' -c:v libx264 -flags +cgop -g 20 
+-f hls -segment_time 4 playlist.m3u8

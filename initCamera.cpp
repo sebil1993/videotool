@@ -36,21 +36,21 @@ DBLite checkForDB(std::string pathToDatabase)
     }
 }
 
-bool checkForEntry(DBLite &db, std::string ip_address)
+std::vector<std::string> checkForEntry(DBLite &db, std::string ip_address)
 {
     std::vector<std::string> entryValues = db.searchEntry("cameras", "*", "ipaddress", ip_address);
-    if (entryValues.size() > 0)
-    {
-        if (entryValues[CAM_STREAMURI].size() > 0)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-    return false;
+    // if (entryValues.size() > 0)
+    // {
+    //     if (entryValues[CAM_STREAMURI].size() > 0)
+    //     {
+    //         return entryValues;
+    //     }
+    //     else
+    //     {
+    //         return entryValues;
+    //     }
+    // }
+    return entryValues;
 }
 
 std::vector<std::string> getInputArray(int argc, char *argv[])
@@ -61,6 +61,7 @@ std::vector<std::string> getInputArray(int argc, char *argv[])
     if (argc == 1)
     {
         std::cout << "no IP given" << std::endl;
+        exit(0);
     }
 
     if (argc > 1)
@@ -130,7 +131,7 @@ std::vector<bool> getInputSettings(int argc, char *argv[])
     return settings;
 }
 
-void createCameraEntry(DBLite &db, std::vector<std::string> inputs, std::vector<bool> settings)
+std::vector<std::string> createCameraEntry(DBLite &db, std::vector<std::string> inputs, std::vector<bool> settings)
 {
     Onvif camera(inputs[0], inputs[1], inputs[2]);
     camera.init(settings[0], settings[1]);
@@ -153,36 +154,42 @@ void createCameraEntry(DBLite &db, std::vector<std::string> inputs, std::vector<
         {
             std::cout << "could not authenticate with SOAP" << std::endl;
             std::cout << "aborting..." << std::endl;
-            return;
+            exit(0);
         }
     }
     std::cout << "creating Entry for " << camera.getIP() << std::endl;
-    db.insertCameras(camera.getIP(), camera.getUser(), camera.getPassword(), camera.getManufacturer(), camera.getModel(), camera.getSerialnumber(), camera.getStreamUri());
+    return db.insertCameras(camera.getIP(), camera.getUser(), camera.getPassword(), camera.getManufacturer(), camera.getModel(), camera.getSerialnumber(), camera.getStreamUri());
 }
 
 int main(int argc, char *argv[])
 {
+    std::cout << argc << std::endl;
     DBLite db = checkForDB("storage/database/database.db");
     std::vector<std::string> inputs = getInputArray(argc, argv);
-
-    if (checkForEntry(db, inputs[0]))
+    std::vector<std::string> output = checkForEntry(db, inputs[0]);
+   
+    if (output.size() > 0)
     {
-        std::cout << "camera with IP in database" << std::endl;
+        std::cout << "camera found" << std::endl;
     }
     else
     {
         std::vector<bool> settings = getInputSettings(argc, argv);
-        createCameraEntry(db, inputs, settings);
+        output = createCameraEntry(db, inputs, settings);
     }
 
     for (int i = 0; i < argc; i++)
     {
-        if (strcmp(argv[i], "-show_table"))
+        if (strcmp(argv[i], "-show_table") == 0)
         {
             db.showTable("cameras");
             break;
         }
     }
-    
+
+    // for (std::string str : output)
+    //     std::cout << str << ", ";
+    // std::cout << std::endl;
+
     return 0;
 }

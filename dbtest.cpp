@@ -31,8 +31,10 @@ int main()
 
     // db.showTable("cameras");
     // std::string searchQuery = "ipaddress,username,password";
-    std::string searchQuery = "*";
-    db.searchEntry("cameras",searchQuery,"id","4");
-
+    // std::string searchQuery = "*";
+    // db.searchEntry("cameras",searchQuery,"id","4");
+    // db.insertCameras("123","user","pw","ken","tix","1337","www..de");
+    for (int i = 6;i<=14;i++)
+        db.deleteCamera(i);
     return 0;
 }

@@ -17,20 +17,6 @@ using namespace std;
 #define CAM_STREAMURI 7
 #define CAM_SNAPSHOTURI 8
 
-
-
-// struct camera
-// {
-//     int id;
-//     std::string ipaddress;
-//     std::string username;
-//     std::string password;
-//     std::string manufacturer;
-//     std::string model;
-//     std::string serialnumber;
-//     std::string streamuri;
-// };
-
 class DBLite
 {
 
@@ -82,10 +68,7 @@ public:
 
         checkDBErrors();
     }
-    void hihi(std::string text)
-    {
-        std::cout << text << std::endl;
-    }
+
     void createTable()
     {
         // Erstes Mal Starten
@@ -111,7 +94,7 @@ public:
         data.replace(data.find("$password$"), sizeof("$password$") - 1, password.c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
-    void insertCameras(string IPAddress, string username, string password, string manufacturer, string model, string serialnumber, string streamuri)
+    std::vector<std::string> insertCameras(string IPAddress, string username, string password, string manufacturer, string model, string serialnumber, string streamuri)
     {
         data = "INSERT INTO CAMERAS ('ipaddress', 'username', 'password', 'manufacturer', 'model', 'serialnumber', 'streamuri') VALUES ('$IPAddress$','$username$','$password$','$manufacturer$','$model$','$serialnumber$','$streamuri$');";
         data.replace(data.find("$IPAddress$"), sizeof("$IPAddress$") - 1, IPAddress.c_str());
@@ -122,6 +105,8 @@ public:
         data.replace(data.find("$serialnumber$"), sizeof("$serialnumber$") - 1, serialnumber.c_str());
         data.replace(data.find("$streamuri$"), sizeof("$streamuri$") - 1, streamuri.c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
+
+        return this->searchEntry("cameras","*","ipaddress",IPAddress.c_str());
     }
 
     void insertEventtypes(string eventName)

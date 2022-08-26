@@ -25,3 +25,4 @@ cat `cat low1fps.m3u8 | grep .ts` | > lowconcat.ts && ffmpeg -y -i lowconcat.ts 
 
 
 
+cat `cat low1fps.m3u8 | grep .ts` | > lowconcat.ts && ffmpeg -y -i cat `cat low1fps.m3u8 | grep .ts` -c:v libx264 lowconcatandmp4.mp4
