@@ -78,6 +78,19 @@ boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
 
 std::string createSystemCallCommand(){
     std::string systemCallCommand;
+    //"ffmpeg -t 00:00:15 -i '$CAMERASTREAM$'
+    // -c:v libx264 -flags +cgop -g 24 
+    //-hls_flags delete_segments -hls_time 4 -hls_list_size 4 
+    //$PLAYLIST$.m3u8";
+
+    //systemcall soll aus mehreren parametern bestehen
+    //ffmpeg
+    //dauer der aufnahme (wird aber rausgeschmissen)
+    //inputstream wird der rtsp link sein, den man über die kamera erhält
+    //
+    //codec und optionen
+    //hls ausgabeformat oder eventuell segmente
+    //name der ausgabe
     systemCallCommand = "ffmpeg ";
 
 
