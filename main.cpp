@@ -76,6 +76,13 @@ boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
     return path;
 }
 
+std::string createSystemCallCommand(){
+    std::string systemCallCommand;
+    systemCallCommand = "ffmpeg ";
+
+
+    return systemCallCommand;
+}
 int main(int argc, char *argv[])
 {
     DBLite db = checkForDB("storage/database/database.db");
@@ -84,7 +91,14 @@ int main(int argc, char *argv[])
     {
         camera_id = argv[1];
     }
+    else{
+        std::cout << "no viable input given" << std::endl;
+        exit(0);
+    }
     std::vector<std::string> camera = db.searchEntry("cameras", "*", "ID", camera_id);
+    for(std::string str: camera){
+        std::cout << str << std::endl;
+    }
     // 16
     // 10.15.100.200
     // admin
