@@ -15,13 +15,19 @@ int main(int argc, char *argv[])
         char mesg_text[100];
     };
 
-    mesg_buffer message = {1};
-    strcpy(message.mesg_text, argv[1]);
+    mesg_buffer message;
+    message.mesg_type = 1;
+    if (argc > 1)
+    {
+        strcpy(message.mesg_text, argv[1]);
+    }
+    else
+    {
+        strcpy(message.mesg_text, argv[0]);
+    }
 
     int msgid;
-
     msgid = msgget(ftok("ftokfile", 65), 0666 | IPC_CREAT);
-    message.mesg_type = 1;
 
     msgsnd(msgid, &message, sizeof(message), 0);
 

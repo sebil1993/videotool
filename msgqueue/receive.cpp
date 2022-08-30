@@ -13,28 +13,19 @@ struct mesg_buffer
 
 int main()
 {
-    key_t key;
+    // key_t key;
+    message.mesg_type = 1;
     int msgid;
 
-    // ftok to generate unique key
-    key = ftok("ftokfile", 65);
+    // key = ftok("ftokfile", 65);
+    msgid = msgget(ftok("ftokfile", 65), 0666 | IPC_CREAT);
 
-    // msgget creates a message queue
-    // and returns identifier
-    msgid = msgget(key, 0666 | IPC_CREAT);
-
-    while (true)
-    { // msgrcv to receive message
+    while (strcmp(message.mesg_text, "exit") != 0)
+    { 
         msgrcv(msgid, &message, sizeof(message), 1, 0);
-
-        // display the message
-        // printf("Data Received is : %s \n",
-        //        message.mesg_text);
         std::cout << message.mesg_text << std::endl;
-        if (strcmp(message.mesg_text, "exit") == 0)
-            break;
     }
-    // to destroy the message queue
+
     msgctl(msgid, IPC_RMID, NULL);
 
     return 0;
