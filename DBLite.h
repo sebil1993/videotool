@@ -76,7 +76,7 @@ public:
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
         data = "CREATE TABLE eventtypes (ID INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL);";
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
-        data = "CREATE TABLE events (ID INTEGER PRIMARY KEY AUTOINCREMENT, timestamp datetime default current_timestamp, camera_id int, eventtype_id int, foreign key (camera_id) references cameras (id), foreign key (eventtype_id) references eventtypes (id));";
+        data = "CREATE TABLE events (ID INTEGER PRIMARY KEY AUTOINCREMENT, timestamp datetime default current_timestamp, camera_id int, eventtype_id int, filepath varchar(255) default '',foreign key (camera_id) references cameras (id), foreign key (eventtype_id) references eventtypes (id));";
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
     // insert cameras
@@ -106,32 +106,42 @@ public:
         data.replace(data.find("$streamuri$"), sizeof("$streamuri$") - 1, streamuri.c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
 
-        return this->searchEntry("cameras","*","ipaddress",IPAddress.c_str());
+        return this->searchEntry("cameras", "*", "ipaddress", IPAddress.c_str());
     }
 
-    void insertEventtypes(string eventName)
+    void insertEventTypes(std::string eventName)
     {
         data = "INSERT INTO eventtypes(name) VALUES('$eventName$');";
         data.replace(data.find("$eventName$"), sizeof("$eventName$") - 1, eventName.c_str());
-        std::cout << data << endl;
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
 
-    void insertEvent(int camera_id, int eventtype_id)
+    int insertEvent(int camera_id, int eventtype_id)
     {
-        data = "INSERT INTO events(camera_id, eventtype_id) VALUES('$camera_id$', '$eventtype_id$');";
+        data = "INSERT INTO events(timestamp, camera_id, eventtype_id) VALUES(datetime('now', 'localtime'), '$camera_id$', '$eventtype_id$');";
         data.replace(data.find("$camera_id$"), sizeof("$camera_id$") - 1, to_string(camera_id).c_str());
         data.replace(data.find("$eventtype_id$"), sizeof("$eventtype_id$") - 1, to_string(eventtype_id).c_str());
-        std::cout << data << endl;
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
+
+        int event_id = sqlite3_last_insert_rowid(db);
+
+        return event_id;
     }
+
     void insertEvent(string timestamp, int camera_id, int eventtype_id)
     {
         data = "INSERT INTO events(timestamp, camera_id, eventtype_id) VALUES('$timestamp$', '$camera_id$', '$eventtype_id$');";
         data.replace(data.find("$timestamp$"), sizeof("$timestamp$") - 1, timestamp.c_str());
         data.replace(data.find("$camera_id$"), sizeof("$camera_id$") - 1, to_string(camera_id).c_str());
         data.replace(data.find("$eventtype_id$"), sizeof("$eventtype_id$") - 1, to_string(eventtype_id).c_str());
-        std::cout << data << endl;
+        sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
+    }
+    void updatePathToEvent(int event_id, std::string filepath)
+    {
+        data = "update events set filepath = '$FILEPATH$' where id = $EVENT_ID$;";
+        data.replace(data.find("$FILEPATH$"), sizeof("$FILEPATH$") - 1, filepath.c_str());
+        data.replace(data.find("$EVENT_ID$"), sizeof("$EVENT_ID$") - 1, to_string(event_id).c_str());
+
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
 
@@ -156,12 +166,19 @@ public:
     {
 
         data = "SELECT $COLUMNS$ FROM $TABLE$ \r\n";
-        data += "WHERE $COLUMN$ = '$VALUE$'";
+        if (column.size() > 0 && value.size() > 0)
+        {
+            data += "WHERE $COLUMN$ = '$VALUE$'";
+        }
 
         data.replace(data.find("$COLUMNS$"), sizeof("$COLUMNS$") - 1, columns.c_str());
         data.replace(data.find("$TABLE$"), sizeof("$TABLE$") - 1, table.c_str());
-        data.replace(data.find("$COLUMN$"), sizeof("$COLUMN$") - 1, column.c_str());
-        data.replace(data.find("$VALUE$"), sizeof("$VALUE$") - 1, value.c_str());
+
+        if (column.size() > 0 && value.size() > 0)
+        {
+            data.replace(data.find("$COLUMN$"), sizeof("$COLUMN$") - 1, column.c_str());
+            data.replace(data.find("$VALUE$"), sizeof("$VALUE$") - 1, value.c_str());
+        }
 
         sqlite3_stmt *stmt;
         sqlite3_prepare_v2(db, data.c_str(), -1, &stmt, NULL);

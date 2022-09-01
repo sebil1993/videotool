@@ -1,13 +1,14 @@
-// C Program for Message Queue (Writer Process)
+#include "Onvif/Onvif.h"
 #include <stdio.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <iostream>
+#include <curl/curl.h>
+#include "DBLite.h"
+
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/directory.hpp>
 #include <boost/filesystem/path.hpp>
-// https://www.geeksforgeeks.org/ipc-using-message-queues/
-// structure for message queue
 
 int main(int argc, char *argv[])
 {

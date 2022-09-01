@@ -13,11 +13,9 @@ struct mesg_buffer
 
 int main()
 {
-    // key_t key;
     message.mesg_type = 1;
     int msgid;
 
-    // key = ftok("ftokfile", 65);
     msgid = msgget(ftok("ftokfile", 65), 0666 | IPC_CREAT);
 
     while (strcmp(message.mesg_text, "exit") != 0)

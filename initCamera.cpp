@@ -21,9 +21,9 @@ DBLite checkForDB(std::string pathToDatabase)
     {
         // init db und erstelle eventtypes
         DBLite sqlDB(pathToDatabase.c_str());
-        std::cout << "creating database at: " << std::endl;
+        std::cout << "creating database at: " << pathToDatabase << std::endl;
         sqlDB.createTable();
-        sqlDB.insertEventtypes("Zutritt");
+        sqlDB.insertEventTypes("Zutritt");
 
         return sqlDB;
     }
@@ -71,6 +71,7 @@ std::vector<std::string> getInputArray(int argc, char *argv[])
         else
         {
             std::cout << "IP not valid" << std::endl;
+            exit(0);
         }
     }
 
@@ -78,16 +79,6 @@ std::vector<std::string> getInputArray(int argc, char *argv[])
     {
         inputs.push_back(argv[2]);
         inputs.push_back(argv[3]);
-        // if (strlen(argv[2]) == 0)
-        // {
-        //     std::cout << "username empty" << std::endl;
-        //     inputs.push_back("");
-        //     if (strlen(argv[3]) != 0)
-        //     {
-        //         std::cout << "password is set but username not" << std::endl;
-        //     }
-        //     inputs.push_back("");
-        // }
     }
 
     return inputs;
@@ -163,11 +154,13 @@ std::vector<std::string> createCameraEntry(DBLite &db, std::vector<std::string> 
 
 int main(int argc, char *argv[])
 {
-    std::cout << argc << std::endl;
-    DBLite db = checkForDB("storage/database/database.db");
+    boost::filesystem::path databasePath = boost::filesystem::current_path();
+    databasePath += "/storage/database/database.db";
+    
+    DBLite db(databasePath.string());
     std::vector<std::string> inputs = getInputArray(argc, argv);
     std::vector<std::string> output = checkForEntry(db, inputs[0]);
-   
+
     if (output.size() > 0)
     {
         std::cout << "camera found" << std::endl;
@@ -186,10 +179,13 @@ int main(int argc, char *argv[])
             break;
         }
     }
-
-    // for (std::string str : output)
-    //     std::cout << str << ", ";
-    // std::cout << std::endl;
-
+    //zusätzlich zum db eintrag wird auch der ordner erstellt in dem die ereignisse liegen werden
+    std::string startBufferSystemCall = "./startBuffer $IPADDRESS$";
+    startBufferSystemCall.replace(startBufferSystemCall.find("$IPADDRESS$"),sizeof("$IPADDRESS$")-1, inputs[0]);
+        
+    //./startBuffer 10.15.100.200
+    
+    system(startBufferSystemCall.c_str());
+   
     return 0;
 }
