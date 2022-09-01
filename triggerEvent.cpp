@@ -26,8 +26,9 @@ int main(int argc, char *argv[])
     int msgid = msgget(ftok(ftokfilePath.c_str(), 65), 0666 | IPC_CREAT);
     std::cout << msgid << std::endl;
 
-    int camera_id = 2;
-    int event_id = 2;
+    int camera_id = stoi(argv[1]);
+    int event_id = stoi(argv[2]);
+    
     std::string messageString = "EVENT_$CID$_$EID$";
     messageString.replace(messageString.find("$CID$"), sizeof("$CID$") - 1, std::to_string(camera_id));
     messageString.replace(messageString.find("$EID$"), sizeof("$EID$") - 1, std::to_string(event_id));

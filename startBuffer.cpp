@@ -24,7 +24,8 @@ std::string escapeAmpersand(std::string &streamURI)
 
 boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
 {
-    std::string nameOfFolder = "";
+
+    std::string nameOfFolder;
     nameOfFolder += camera[CAM_MANUFACTURER];
     nameOfFolder += '_';
     nameOfFolder += camera[CAM_MODEL];
@@ -49,7 +50,6 @@ std::string createSystemCallCommandForBuffer(std::vector<std::string> camera)
 
     std::string outputFilename = "$PATH$/$FILENAME$";
     auto path = checkOrCreateDirectory(camera);
-
     std::string cameraStreamURI = camera[CAM_STREAMURI];
     std::string credentials;
     credentials = "//";
@@ -61,8 +61,7 @@ std::string createSystemCallCommandForBuffer(std::vector<std::string> camera)
     outputFilename.replace(outputFilename.find("$PATH$"), sizeof("$PATH$") - 1, path.c_str());
     outputFilename.replace(outputFilename.find("$FILENAME$"), sizeof("$FILENAME$") - 1, camera[CAM_SERIALNUMBER].c_str());
     cameraStreamURI.replace(cameraStreamURI.find("//"), sizeof("//") - 1, credentials.c_str());
-    
-    
+
     systemCallCommand.replace(systemCallCommand.find("$STREAMURI$"), sizeof("$STREAMURI$") - 1, escapeAmpersand(cameraStreamURI).c_str());
     systemCallCommand.replace(systemCallCommand.find("$BASEURL$"), sizeof("$BASEURL$") - 1, path.c_str());
     systemCallCommand.replace(systemCallCommand.find("$OUTPUT$"), sizeof("$OUTPUT$") - 1, outputFilename.c_str());
@@ -76,7 +75,7 @@ int main(int argc, char *argv[])
     {
         exit(0);
     }
-    
+    std::cout << argv[1] << std::endl;
     boost::filesystem::path databasePath = boost::filesystem::current_path();
     databasePath += "/storage/database/database.db";
     DBLite db(databasePath.string());
@@ -84,7 +83,7 @@ int main(int argc, char *argv[])
 
     std::cout << createSystemCallCommandForBuffer(camera) << std::endl;
     std::cout << "starting buffer for: " << camera[CAM_IPADDRESS] << std::endl;
-    // system(createSystemCallCommandForBuffer(camera).c_str());
+    system(createSystemCallCommandForBuffer(camera).c_str());
 
     return 0;
 }

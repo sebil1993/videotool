@@ -39,17 +39,7 @@ DBLite checkForDB(std::string pathToDatabase)
 std::vector<std::string> checkForEntry(DBLite &db, std::string ip_address)
 {
     std::vector<std::string> entryValues = db.searchEntry("cameras", "*", "ipaddress", ip_address);
-    // if (entryValues.size() > 0)
-    // {
-    //     if (entryValues[CAM_STREAMURI].size() > 0)
-    //     {
-    //         return entryValues;
-    //     }
-    //     else
-    //     {
-    //         return entryValues;
-    //     }
-    // }
+
     return entryValues;
 }
 
@@ -157,7 +147,7 @@ int main(int argc, char *argv[])
     boost::filesystem::path databasePath = boost::filesystem::current_path();
     databasePath += "/storage/database/database.db";
     
-    DBLite db(databasePath.string());
+    DBLite db = checkForDB(databasePath.string());
     std::vector<std::string> inputs = getInputArray(argc, argv);
     std::vector<std::string> output = checkForEntry(db, inputs[0]);
 
@@ -180,10 +170,13 @@ int main(int argc, char *argv[])
         }
     }
     //zusätzlich zum db eintrag wird auch der ordner erstellt in dem die ereignisse liegen werden
+    
+    
     std::string startBufferSystemCall = "./startBuffer $IPADDRESS$";
     startBufferSystemCall.replace(startBufferSystemCall.find("$IPADDRESS$"),sizeof("$IPADDRESS$")-1, inputs[0]);
         
     //./startBuffer 10.15.100.200
+    // std::cout << startBufferSystemCall << std::endl;
     
     system(startBufferSystemCall.c_str());
    
