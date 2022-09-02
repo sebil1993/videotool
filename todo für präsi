@@ -52,9 +52,23 @@ ffmpeg -t 00:00:30 -i 'rtsp://10.15.100.200/h264' -c:v libx264 -flags
 ffmpeg -i 'rtsp://10.15.100.200/h264' -c:v libx264 -flags +cgop -g 20 
 -f segment -segment_time 4 -segment_list playlist.m3u8 playlist%03d.ts
 
+
+ffmpeg -y -i 'rtsp://seb:sebseb@10.15.2.201/onvif-media/media.amp?profile=profile_1_h264&sessiontimeout=60&streamtype=unicast' -r 4 -b:v 2M -maxrate 1M -bufsize 1M
+
+
 //andere
 ffmpeg -i 'rtsp://10.15.100.200/h264' -c:v libx264 -flags +cgop -g 20 -f hls -hls_time 4 playlist.m3u8
 
 //andere
 ffmpeg -i 'rtsp://10.15.100.200/h264' -c:v libx264 -flags +cgop -g 24 
 -f hls -hls_time 4 playlist.m3u8
+
+
+//hls https://blog.zazu.berlin/internet-programmierung/mpeg-dash-and-hls-adaptive-bitrate-streaming-with-ffmpeg.html
+ffmpeg -i 'rtsp://10.15.100.200/h264' -c:v libx264 -r 4 -maxrate 1M -bufsize 2M -f hls -hls_flags delete_segments -hls_time 4 -hls_list_size 2 stream.m3u8
+ 
+
+
+
+// den hier behalte ich
+ffmpeg -y -i 'rtsp://seb:sebseb@10.15.2.201/onvif-media/media.amp?profile=profile_1_h264&sessiontimeout=60&streamtype=unicast' -g 20 -r 4 -b:v 2M -maxrate 2M -bufsize 1M -f hls -hls_flags delete_segments -hls_list_size 12 stream.m3u8

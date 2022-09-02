@@ -21,21 +21,28 @@ int main(int argc, char *argv[])
     mesg_buffer message;
     message.mesg_type = 1;
 
+    boost::filesystem::path databasePath = boost::filesystem::current_path();
+    databasePath += "/storage/database/database.db";
+    DBLite db(databasePath.string());
+    if (argc == 1)
+    {
+        exit(0);
+    }
+    int camera_id = stoi(argv[1]);
+    int event_id = db.insertEvent(camera_id, 1);
+    
     boost::filesystem::path ftokfilePath = boost::filesystem::current_path();
     ftokfilePath += "/msgqueue/ftokfile";
     int msgid = msgget(ftok(ftokfilePath.c_str(), 65), 0666 | IPC_CREAT);
     std::cout << msgid << std::endl;
 
-    int camera_id = stoi(argv[1]);
-    int event_id = stoi(argv[2]);
-    
     std::string messageString = "EVENT_$CID$_$EID$";
     messageString.replace(messageString.find("$CID$"), sizeof("$CID$") - 1, std::to_string(camera_id));
     messageString.replace(messageString.find("$EID$"), sizeof("$EID$") - 1, std::to_string(event_id));
     std::cout << messageString << std::endl;
 
     strcpy(message.mesg_text, messageString.c_str());
-    
+
     msgsnd(msgid, &message, sizeof(message), 0);
 
     printf("Data send is : %s \n", message.mesg_text);

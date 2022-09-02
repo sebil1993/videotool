@@ -24,17 +24,24 @@ std::string escapeAmpersand(std::string &streamURI)
 
 boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
 {
-
-    std::string nameOfFolder;
+    std::string nameOfFolder = "";
     nameOfFolder += camera[CAM_MANUFACTURER];
     nameOfFolder += '_';
     nameOfFolder += camera[CAM_MODEL];
     nameOfFolder += '_';
     nameOfFolder += camera[CAM_SERIALNUMBER];
+    while (true)
+    {
+        if (nameOfFolder.find(" ") == std::string::npos)
+            break;
+        nameOfFolder.replace(nameOfFolder.find(" "), sizeof(" ") - 1, "_");
+    }
 
     boost::filesystem::path path = boost::filesystem::current_path();
     path += "/storage/cameras/";
     path += nameOfFolder;
+
+    std::cout << path << std::endl;
     if (!boost::filesystem::exists(path))
     {
         boost::filesystem::create_directory(path);
@@ -75,12 +82,16 @@ int main(int argc, char *argv[])
     {
         exit(0);
     }
-    std::cout << argv[1] << std::endl;
+
     boost::filesystem::path databasePath = boost::filesystem::current_path();
     databasePath += "/storage/database/database.db";
     DBLite db(databasePath.string());
     std::vector<std::string> camera = db.searchEntry("cameras", "*", "ipaddress", argv[1]);
-
+    if (camera.size() == 0)
+    {
+        std::cout << "keine kamera mit: " << argv[1] << " gefunden!" << std::endl;
+        exit(0);
+    }
     std::cout << createSystemCallCommandForBuffer(camera) << std::endl;
     std::cout << "starting buffer for: " << camera[CAM_IPADDRESS] << std::endl;
     system(createSystemCallCommandForBuffer(camera).c_str());

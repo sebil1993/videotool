@@ -10,6 +10,18 @@
 #include <boost/filesystem/directory.hpp>
 #include <boost/filesystem/path.hpp>
 
+std::string escapeAmpersand(std::string &streamURI)
+{
+    while (true)
+    {
+        if (streamURI.find("&") == std::string::npos)
+            break;
+        streamURI.replace(streamURI.find("&"), sizeof("&") - 1, "%26");
+    }
+
+    return streamURI;
+}
+
 std::vector<std::string> parseEventMessage(std::string msgQueue)
 {
     size_t start;
@@ -45,21 +57,34 @@ boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
 
     return path;
 }
-std::string createConcateSystemCallCommand(std::vector<std::string> camera)
+std::string createSystemCallCommandForEvent(std::vector<std::string> camera)
 {
-    boost::filesystem::path camerapath = checkOrCreateDirectory(camera);
-    camerapath += "/";
-    boost::filesystem::path filepath = camerapath;
-    filepath += camera[CAM_SERIALNUMBER];
-    filepath += ".m3u8";
+    std::string event_id = "2";
+    std::string systemCallCommand = "ffmpeg -hide_banner -loglevel panic -t 00:00:10 -i '$STREAMURI$' ";
+    systemCallCommand += "-g 20 -b:v 2M -maxrate 2M -bufsize 1M '$OUTPUT$.mp4'";
 
-    std::string concateCall = "cat `cat '$FILEPATH$' | grep .ts` > '$CAMERAPATH$concated_$SERIALNUMBER$.ts'";
+    std::string outputFilename = "$PATH$/$FILENAME$_";
+    outputFilename += "event_id";
+    outputFilename += "_";
+    outputFilename += event_id;
+    auto path = checkOrCreateDirectory(camera);
+    std::string cameraStreamURI = camera[CAM_STREAMURI];
+    std::string credentials;
+    credentials = "//";
+    credentials += camera[CAM_USERNAME];
+    credentials += ":";
+    credentials += camera[CAM_PASSWORD];
+    credentials += "@";
 
-    concateCall.replace(concateCall.find("$FILEPATH$"), sizeof("$FILEPATH$") - 1, filepath.c_str());
-    concateCall.replace(concateCall.find("$CAMERAPATH$"), sizeof("$CAMERAPATH$") - 1, camerapath.c_str());
-    concateCall.replace(concateCall.find("$SERIALNUMBER$"), sizeof("$SERIALNUMBER$") - 1, camera[CAM_SERIALNUMBER].c_str());
+    outputFilename.replace(outputFilename.find("$PATH$"), sizeof("$PATH$") - 1, path.c_str());
+    outputFilename.replace(outputFilename.find("$FILENAME$"), sizeof("$FILENAME$") - 1, camera[CAM_SERIALNUMBER].c_str());
+    cameraStreamURI.replace(cameraStreamURI.find("//"), sizeof("//") - 1, credentials.c_str());
 
-    return concateCall;
+    systemCallCommand.replace(systemCallCommand.find("$STREAMURI$"), sizeof("$STREAMURI$") - 1, escapeAmpersand(cameraStreamURI).c_str());
+    // systemCallCommand.replace(systemCallCommand.find("$BASEURL$"), sizeof("$BASEURL$") - 1, path.c_str());
+    systemCallCommand.replace(systemCallCommand.find("$OUTPUT$"), sizeof("$OUTPUT$") - 1, outputFilename.c_str());
+
+    return systemCallCommand;
 }
 
 struct mesg_buffer
@@ -97,18 +122,11 @@ int main(int argc, char *argv[])
             std::cout << createConcateSystemCallCommand(camera) << std::endl;
 
             system(createConcateSystemCallCommand(camera).c_str());
-
-            std::cout << "buffer von " << camera[CAM_IPADDRESS] << " abgespeichert" << std::endl;
-        }
-        else
-        {
-            std::cout << "keine kamera gefunden" << std::endl;
-            std::cout << parsedEventMessage[0].c_str() << std::endl;
-            if (strcmp(parsedEventMessage[1].c_str(), "0") == 0)
-            {
-                std::cout << "exiting" << std::endl;
-                exit(0);
-            }
         }
     }
+    
+    std::vector<std::string> camera = db.searchEntry("cameras", "*", "id", "1");
+    system(createSystemCallCommandForEvent(db.searchEntry("cameras", "*", "id", "1")).c_str());
+    std::cout << "aufnahme abgeschlossen" << std::endl;
+    return 0;
 }
