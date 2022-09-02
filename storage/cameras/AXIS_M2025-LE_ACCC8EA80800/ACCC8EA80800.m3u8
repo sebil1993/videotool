@@ -1,0 +1,17 @@
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:5
+#EXT-X-MEDIA-SEQUENCE:0
+#EXTINF:5.333333,
+/Users/kentix/Documents/git/videotool/storage/cameras/AXIS_M2025-LE_ACCC8EA80800/ACCC8EA808000.ts
+#EXTINF:4.666667,
+/Users/kentix/Documents/git/videotool/storage/cameras/AXIS_M2025-LE_ACCC8EA80800/ACCC8EA808001.ts
+#EXTINF:5.333333,
+/Users/kentix/Documents/git/videotool/storage/cameras/AXIS_M2025-LE_ACCC8EA80800/ACCC8EA808002.ts
+#EXTINF:4.666667,
+/Users/kentix/Documents/git/videotool/storage/cameras/AXIS_M2025-LE_ACCC8EA80800/ACCC8EA808003.ts
+#EXTINF:5.333333,
+/Users/kentix/Documents/git/videotool/storage/cameras/AXIS_M2025-LE_ACCC8EA80800/ACCC8EA808004.ts
+#EXTINF:4.233333,
+/Users/kentix/Documents/git/videotool/storage/cameras/AXIS_M2025-LE_ACCC8EA80800/ACCC8EA808005.ts
+#EXT-X-ENDLIST
