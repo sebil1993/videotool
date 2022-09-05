@@ -5,17 +5,20 @@
 #include <iostream>
 #include <curl/curl.h>
 #include "DBLite.h"
+#include <thread>
+#include <chrono>
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/directory.hpp>
 #include <boost/filesystem/path.hpp>
 
-std::vector<std::string> parseEventMessage(std::string msgQueue)
+std::vector<std::string> parseConcateMessage(std::string msgQueue)
 {
     size_t start;
     size_t end = 0;
     std::vector<std::string> parsedMessage;
-    if (msgQueue.find("EVENT_") != std::string::npos)
+
+    if (msgQueue.find("CONCATE_") != std::string::npos)
     {
         while ((start = msgQueue.find_first_not_of("_", end)) != std::string::npos)
         {
@@ -25,39 +28,40 @@ std::vector<std::string> parseEventMessage(std::string msgQueue)
     }
     return parsedMessage;
 }
-boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
+boost::filesystem::path getDirectory(std::vector<std::string> camera)
 {
-    std::string nameOfFolder = "";
-    nameOfFolder += camera[CAM_MANUFACTURER];
-    nameOfFolder += '_';
-    nameOfFolder += camera[CAM_MODEL];
-    nameOfFolder += '_';
-    nameOfFolder += camera[CAM_SERIALNUMBER];
+    std::string nameOfCamera = "";
+    nameOfCamera += camera[CAM_MANUFACTURER];
+    nameOfCamera += '_';
+    nameOfCamera += camera[CAM_MODEL];
+    nameOfCamera += '_';
+    nameOfCamera += camera[CAM_SERIALNUMBER];
     while (true)
     {
-        if (nameOfFolder.find(" ") == std::string::npos)
+        if (nameOfCamera.find(" ") == std::string::npos)
             break;
-        nameOfFolder.replace(nameOfFolder.find(" "), sizeof(" ") - 1, "_");
+        nameOfCamera.replace(nameOfCamera.find(" "), sizeof(" ") - 1, "_");
     }
-    boost::filesystem::path path = boost::filesystem::current_path();
-    path += "/storage/cameras/";
-    path += nameOfFolder;
+    boost::filesystem::path cameraPath = boost::filesystem::current_path();
+    cameraPath += "/storage/cameras/";
+    cameraPath += nameOfCamera;
 
-    return path;
+    return cameraPath;
 }
-std::string createConcateSystemCallCommand(std::vector<std::string> camera)
+std::string createSystemCallCommandForConcate(std::vector<std::string> camera, std::string event_id)
 {
-    boost::filesystem::path camerapath = checkOrCreateDirectory(camera);
-    camerapath += "/";
-    boost::filesystem::path filepath = camerapath;
-    filepath += camera[CAM_SERIALNUMBER];
-    filepath += ".m3u8";
+    boost::filesystem::path cameraPath = getDirectory(camera);
+    cameraPath += "/";
+    boost::filesystem::path filePathBuffer = cameraPath;
+    filePathBuffer += camera[CAM_SERIALNUMBER];
+    filePathBuffer += ".m3u8";
 
-    std::string concateCall = "cat `cat '$FILEPATH$' | grep .ts` > '$CAMERAPATH$concated_$SERIALNUMBER$.ts'";
+    std::string concateCall = "cat `cat '$FILEPATHBUFFER$' | grep .ts` > '$CAMERAPATH$$SERIALNUMBER$_buffer_event_id_$EID$.ts'";
 
-    concateCall.replace(concateCall.find("$FILEPATH$"), sizeof("$FILEPATH$") - 1, filepath.c_str());
-    concateCall.replace(concateCall.find("$CAMERAPATH$"), sizeof("$CAMERAPATH$") - 1, camerapath.c_str());
+    concateCall.replace(concateCall.find("$FILEPATHBUFFER$"), sizeof("$FILEPATHBUFFER$") - 1, filePathBuffer.c_str());
+    concateCall.replace(concateCall.find("$CAMERAPATH$"), sizeof("$CAMERAPATH$") - 1, cameraPath.c_str());
     concateCall.replace(concateCall.find("$SERIALNUMBER$"), sizeof("$SERIALNUMBER$") - 1, camera[CAM_SERIALNUMBER].c_str());
+    concateCall.replace(concateCall.find("$EID$"), sizeof("$EID$") - 1, event_id.c_str());
 
     return concateCall;
 }
@@ -76,38 +80,35 @@ int main(int argc, char *argv[])
     DBLite db(databasePath.string());
 
     boost::filesystem::path ftokfilePath = boost::filesystem::current_path();
-    ftokfilePath += "/msgqueue/ftokfile";
+    ftokfilePath += "/msgqueue/concate_MSGQ";
 
     int msgid = msgget(ftok(ftokfilePath.c_str(), 65), 0666 | IPC_CREAT);
     std::cout << msgid << std::endl;
 
     message.mesg_type = 1;
-    std::cout << "waiting for event: " << std::endl;
+    std::cout << "[concateBuffer] waiting for event: " << std::endl;
 
-    std::vector<std::string> parsedEventMessage, camera;
-    boost::filesystem::path camerapath;
-
-    while (strcmp(message.mesg_text, "0") != 0)
+    std::vector<std::string> parsedConcateMessage, camera;
+    boost::filesystem::path cameraPath;
+    while (true)
     {
         msgrcv(msgid, &message, sizeof(message), 1, 0);
-        parsedEventMessage = parseEventMessage(message.mesg_text);
-        camera = db.searchEntry("cameras", "*", "id", parsedEventMessage[1]);
-        if (camera.size() > 0)
-        {
-            std::cout << createConcateSystemCallCommand(camera) << std::endl;
+        parsedConcateMessage = parseConcateMessage(message.mesg_text);
 
-            system(createConcateSystemCallCommand(camera).c_str());
-
-            std::cout << "buffer von " << camera[CAM_IPADDRESS] << " abgespeichert" << std::endl;
-        }
-        else
+        if (strcmp(parsedConcateMessage[0].c_str(), "CONCATE") == 0)
         {
-            std::cout << "keine kamera gefunden" << std::endl;
-            std::cout << parsedEventMessage[0].c_str() << std::endl;
-            if (strcmp(parsedEventMessage[1].c_str(), "0") == 0)
+            camera = db.searchEntry("cameras", "*", "id", parsedConcateMessage[1]);
+
+            if (camera.size() > 0)
             {
-                std::cout << "exiting" << std::endl;
-                exit(0);
+                cameraPath = getDirectory(camera);
+                std::cout << "[concateBuffer] concating buffer for "
+                          << camera[CAM_IPADDRESS]
+                          << " with EVENT_ID " << parsedConcateMessage[2] << std::endl;
+                // std::this_thread::sleep_for(std::chrono::seconds(6));
+
+                system(createSystemCallCommandForConcate(camera, parsedConcateMessage[2]).c_str());
+                // db.updatePathToEvent(stoi(parseConcateMessage[2].c_str()))
             }
         }
     }

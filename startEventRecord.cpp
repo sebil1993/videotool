@@ -27,6 +27,13 @@ std::vector<std::string> parseEventMessage(std::string msgQueue)
     size_t start;
     size_t end = 0;
     std::vector<std::string> parsedMessage;
+
+    // if (msgQueue.find("EVENT_") == std::string::npos)
+    // {
+    //     std::cout << "hallo3" << std::endl;
+    // }
+    // else
+    // {
     if (msgQueue.find("EVENT_") != std::string::npos)
     {
         while ((start = msgQueue.find_first_not_of("_", end)) != std::string::npos)
@@ -39,35 +46,34 @@ std::vector<std::string> parseEventMessage(std::string msgQueue)
 }
 boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
 {
-    std::string nameOfFolder = "";
-    nameOfFolder += camera[CAM_MANUFACTURER];
-    nameOfFolder += '_';
-    nameOfFolder += camera[CAM_MODEL];
-    nameOfFolder += '_';
-    nameOfFolder += camera[CAM_SERIALNUMBER];
+    std::string nameOfCamera = "";
+    nameOfCamera += camera[CAM_MANUFACTURER];
+    nameOfCamera += '_';
+    nameOfCamera += camera[CAM_MODEL];
+    nameOfCamera += '_';
+    nameOfCamera += camera[CAM_SERIALNUMBER];
     while (true)
     {
-        if (nameOfFolder.find(" ") == std::string::npos)
+        if (nameOfCamera.find(" ") == std::string::npos)
             break;
-        nameOfFolder.replace(nameOfFolder.find(" "), sizeof(" ") - 1, "_");
+        nameOfCamera.replace(nameOfCamera.find(" "), sizeof(" ") - 1, "_");
     }
-    boost::filesystem::path path = boost::filesystem::current_path();
-    path += "/storage/cameras/";
-    path += nameOfFolder;
+    boost::filesystem::path filePath = boost::filesystem::current_path();
+    filePath += "/storage/cameras/";
+    filePath += nameOfCamera;
 
-    return path;
+    return filePath;
 }
-std::string createSystemCallCommandForEvent(std::vector<std::string> camera)
+std::string createSystemCallCommandForEvent(std::vector<std::string> camera, std::string event_id)
 {
-    std::string event_id = "2";
     std::string systemCallCommand = "ffmpeg -hide_banner -loglevel panic -t 00:00:10 -i '$STREAMURI$' ";
-    systemCallCommand += "-g 20 -b:v 2M -maxrate 2M -bufsize 1M '$OUTPUT$.mp4'";
+    systemCallCommand += "-g 20 -b:v 2M -maxrate 2M -bufsize 1M '$OUTPUT$.ts'";
 
-    std::string outputFilename = "$PATH$/$FILENAME$_";
+    std::string outputFilename = "$PATH$/$FILENAME$_event_";
     outputFilename += "event_id";
     outputFilename += "_";
     outputFilename += event_id;
-    auto path = checkOrCreateDirectory(camera);
+    boost::filesystem::path path = checkOrCreateDirectory(camera);
     std::string cameraStreamURI = camera[CAM_STREAMURI];
     std::string credentials;
     credentials = "//";
@@ -81,7 +87,6 @@ std::string createSystemCallCommandForEvent(std::vector<std::string> camera)
     cameraStreamURI.replace(cameraStreamURI.find("//"), sizeof("//") - 1, credentials.c_str());
 
     systemCallCommand.replace(systemCallCommand.find("$STREAMURI$"), sizeof("$STREAMURI$") - 1, escapeAmpersand(cameraStreamURI).c_str());
-    // systemCallCommand.replace(systemCallCommand.find("$BASEURL$"), sizeof("$BASEURL$") - 1, path.c_str());
     systemCallCommand.replace(systemCallCommand.find("$OUTPUT$"), sizeof("$OUTPUT$") - 1, outputFilename.c_str());
 
     return systemCallCommand;
@@ -101,32 +106,39 @@ int main(int argc, char *argv[])
     DBLite db(databasePath.string());
 
     boost::filesystem::path ftokfilePath = boost::filesystem::current_path();
-    ftokfilePath += "/msgqueue/ftokfile";
+    ftokfilePath += "/msgqueue/event_MSGQ";
 
     int msgid = msgget(ftok(ftokfilePath.c_str(), 65), 0666 | IPC_CREAT);
     std::cout << msgid << std::endl;
 
     message.mesg_type = 1;
-    std::cout << "waiting for event: " << std::endl;
+    std::cout << "[startEventRecord] waiting for event: " << std::endl;
 
     std::vector<std::string> parsedEventMessage, camera;
     boost::filesystem::path camerapath;
-
-    while (strcmp(message.mesg_text, "0") != 0)
+    while (true)
     {
         msgrcv(msgid, &message, sizeof(message), 1, 0);
         parsedEventMessage = parseEventMessage(message.mesg_text);
-        camera = db.searchEntry("cameras", "*", "id", parsedEventMessage[1]);
-        if (camera.size() > 0)
-        {
-            std::cout << createConcateSystemCallCommand(camera) << std::endl;
 
-            system(createConcateSystemCallCommand(camera).c_str());
+        if (strcmp(parsedEventMessage[0].c_str(), "EVENT") == 0)
+        {
+            camera = db.searchEntry("cameras", "*", "id", parsedEventMessage[1]);
+
+            if (camera.size() > 0)
+            {
+                std::cout << "[startEventRecord] start recording for "
+                          << camera[CAM_IPADDRESS]
+                          << " with EVENT_ID " << parsedEventMessage[2] << std::endl;
+                system(createSystemCallCommandForEvent(camera, parsedEventMessage[2]).c_str());
+                // std::string newCMD;
+                // newCMD = "ffm"
+                std::cout << "[startEventRecord] finished recording for "
+                          << camera[CAM_IPADDRESS]
+                          << " with EVENT_ID " << parsedEventMessage[2] << std::endl;
+            }
         }
     }
-    
-    std::vector<std::string> camera = db.searchEntry("cameras", "*", "id", "1");
-    system(createSystemCallCommandForEvent(db.searchEntry("cameras", "*", "id", "1")).c_str());
-    std::cout << "aufnahme abgeschlossen" << std::endl;
+
     return 0;
 }

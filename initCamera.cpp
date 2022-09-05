@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
     //zusätzlich zum db eintrag wird auch der ordner erstellt in dem die ereignisse liegen werden
     
     
-    std::string startBufferSystemCall = "./startBuffer $IPADDRESS$";
+    std::string startBufferSystemCall = "./startBufferRecord $IPADDRESS$";
     startBufferSystemCall.replace(startBufferSystemCall.find("$IPADDRESS$"),sizeof("$IPADDRESS$")-1, inputs[0]);
         
     //./startBuffer 10.15.100.200
