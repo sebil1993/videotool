@@ -64,10 +64,11 @@ boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
 
     return filePath;
 }
-std::string createSystemCallCommandForEvent(std::vector<std::string> camera, std::string event_id)
+std::vector<std::string> createSystemCallCommandForEvent(std::vector<std::string> camera, std::string event_id)
 {
+    std::vector<std::string> response;
     std::string systemCallCommand = "ffmpeg -hide_banner -loglevel panic -t 00:00:10 -i '$STREAMURI$' ";
-    systemCallCommand += "-g 20 -b:v 2M -maxrate 2M -bufsize 1M '$OUTPUT$.ts'";
+    systemCallCommand += "-g 20 -b:v 2M '$OUTPUT$.ts'";
 
     std::string outputFilename = "$PATH$/$FILENAME$_event_";
     outputFilename += "event_id";
@@ -89,7 +90,9 @@ std::string createSystemCallCommandForEvent(std::vector<std::string> camera, std
     systemCallCommand.replace(systemCallCommand.find("$STREAMURI$"), sizeof("$STREAMURI$") - 1, escapeAmpersand(cameraStreamURI).c_str());
     systemCallCommand.replace(systemCallCommand.find("$OUTPUT$"), sizeof("$OUTPUT$") - 1, outputFilename.c_str());
 
-    return systemCallCommand;
+    response.push_back(systemCallCommand);
+    response.push_back(outputFilename);
+    return response;
 }
 
 struct mesg_buffer
@@ -112,17 +115,18 @@ int main(int argc, char *argv[])
     std::cout << msgid << std::endl;
 
     message.mesg_type = 1;
-    std::cout << "[startEventRecord] waiting for event: " << std::endl;
 
     std::vector<std::string> parsedEventMessage, camera;
     boost::filesystem::path camerapath;
     while (true)
     {
+        std::cout << "[startEventRecord] waiting for event: " << std::endl;
         msgrcv(msgid, &message, sizeof(message), 1, 0);
         parsedEventMessage = parseEventMessage(message.mesg_text);
 
         if (strcmp(parsedEventMessage[0].c_str(), "EVENT") == 0)
         {
+            std::vector<std::string> systemCallAndPath;
             camera = db.searchEntry("cameras", "*", "id", parsedEventMessage[1]);
 
             if (camera.size() > 0)
@@ -130,12 +134,12 @@ int main(int argc, char *argv[])
                 std::cout << "[startEventRecord] start recording for "
                           << camera[CAM_IPADDRESS]
                           << " with EVENT_ID " << parsedEventMessage[2] << std::endl;
-                system(createSystemCallCommandForEvent(camera, parsedEventMessage[2]).c_str());
-                // std::string newCMD;
-                // newCMD = "ffm"
+                systemCallAndPath =createSystemCallCommandForEvent(camera, parsedEventMessage[2]); 
+                system(systemCallAndPath[0].c_str());
                 std::cout << "[startEventRecord] finished recording for "
                           << camera[CAM_IPADDRESS]
                           << " with EVENT_ID " << parsedEventMessage[2] << std::endl;
+                db.updatePathToEvent(stoi(parsedEventMessage[2]),systemCallAndPath[1]);
             }
         }
     }

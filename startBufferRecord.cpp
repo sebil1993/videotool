@@ -52,7 +52,7 @@ boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
 std::string createSystemCallCommandForBuffer(std::vector<std::string> camera)
 {
     std::string systemCallCommand = "ffmpeg -hide_banner -loglevel info -i '$STREAMURI$' ";
-    systemCallCommand += "-g 20 -b:v 2M -maxrate 2M -bufsize 1M -f hls -hls_flags delete_segments -hls_base_url '$BASEURL$/' -hls_time 5 -hls_list_size 18 '$OUTPUT$.m3u8'";
+    systemCallCommand += "-g 20 -b:v 2M -maxrate 2M -bufsize 1M -f hls -hls_flags delete_segments -hls_base_url '$BASEURL$/' -hls_time 2 -hls_list_size 10 '$OUTPUT$.m3u8'";
 
     std::string outputFilename = "$PATH$/$FILENAME$";
     auto path = checkOrCreateDirectory(camera);

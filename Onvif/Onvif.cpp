@@ -41,11 +41,20 @@ void Onvif::init(bool enableAuthInHeader, bool enableDebugMode)
     // beschaffen der Profile
     this->GetProfiles();
     // die stream uri besorgen
-    this->GetStreamUri(this->profiles[0]);
-    // die snapshot uri besorgen
-    this->GetSnapshotUri(this->profiles[0]);
-    // beschaffen der information für ordnerstruktur
-    this->GetDeviceInformation();
+    if (this->GetProfiles().size() > 0)
+    {
+        this->GetStreamUri(this->profiles[0]);
+        // die snapshot uri besorgen
+        this->GetSnapshotUri(this->profiles[0]);
+        // beschaffen der information für ordnerstruktur
+        this->GetDeviceInformation();
+    }
+    else
+    {
+        std::cout << "couldn't add camera" << std::endl;
+
+        exit(0);
+    }
 }
 void Onvif::setDebugMode(bool enableDebugMode)
 {
@@ -88,7 +97,7 @@ std::string Onvif::getUserPWD()
     return UserPWD;
 }
 void Onvif::getAllInfos()
-{   
+{
     std::cout << "[ipAdress] => " << this->ipAdress << std::endl;
     std::cout << "[username] => " << this->username << std::endl;
     std::cout << "[password] => " << this->password << std::endl;
@@ -135,16 +144,18 @@ std::string Onvif::getUniqueDeviceName()
     uniqueName.pop_back();
     return uniqueName;
 }
-std::string Onvif::getManufacturer(){
+std::string Onvif::getManufacturer()
+{
     return this->deviceInformation[0];
 }
-std::string Onvif::getModel(){
+std::string Onvif::getModel()
+{
     return this->deviceInformation[1];
 }
-std::string Onvif::getSerialnumber(){
+std::string Onvif::getSerialnumber()
+{
     return this->deviceInformation[2];
 }
-
 
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -465,8 +476,6 @@ std::vector<std::string> Onvif::passwordDigest(std::string password, std::string
     return digestArray;
 
 */
-
-
 
 std::string Onvif::GetSnapshotUri(std::string profile)
 {

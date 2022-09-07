@@ -30,8 +30,8 @@ int main(int argc, char *argv[])
 
     mesg_buffer messageConcate;
     messageConcate.mesg_type = 1;
-    mesg_buffer messageEvent;
-    messageEvent.mesg_type = 1;
+    // mesg_buffer messageEvent;
+    // messageEvent.mesg_type = 1;
 
     boost::filesystem::path ftokfilePath = boost::filesystem::current_path();
     ftokfilePath += "/msgqueue/concate_MSGQ";
@@ -47,18 +47,18 @@ int main(int argc, char *argv[])
     printf("[Concate Data] send is : %s \n", messageConcate.mesg_text);
     // std::cout << concateMessageString << "  " << eventMessageString << std::endl;
 
-    ftokfilePath = boost::filesystem::current_path();
-    ftokfilePath += "/msgqueue/event_MSGQ";
-    int eventMsgid = msgget(ftok(ftokfilePath.c_str(), 65), 0666 | IPC_CREAT);
-    std::cout << "eventMsgid " << eventMsgid << std::endl;
+    // ftokfilePath = boost::filesystem::current_path();
+    // ftokfilePath += "/msgqueue/event_MSGQ";
+    // int eventMsgid = msgget(ftok(ftokfilePath.c_str(), 65), 0666 | IPC_CREAT);
+    // std::cout << "eventMsgid " << eventMsgid << std::endl;
 
-    std::string eventMessageString = "EVENT_$CID$_$EID$";
-    eventMessageString.replace(eventMessageString.find("$CID$"), sizeof("$CID$") - 1, std::to_string(camera_id));
-    eventMessageString.replace(eventMessageString.find("$EID$"), sizeof("$EID$") - 1, std::to_string(event_id));
+    // std::string eventMessageString = "EVENT_$CID$_$EID$";
+    // eventMessageString.replace(eventMessageString.find("$CID$"), sizeof("$CID$") - 1, std::to_string(camera_id));
+    // eventMessageString.replace(eventMessageString.find("$EID$"), sizeof("$EID$") - 1, std::to_string(event_id));
 
-    strcpy(messageEvent.mesg_text, eventMessageString.c_str());
-    msgsnd(eventMsgid, &messageEvent, sizeof(messageEvent), 0);
-    printf("[Event Data] send is : %s \n", messageEvent.mesg_text);
+    // strcpy(messageEvent.mesg_text, eventMessageString.c_str());
+    // msgsnd(eventMsgid, &messageEvent, sizeof(messageEvent), 0);
+    // printf("[Event Data] send is : %s \n", messageEvent.mesg_text);
 
     return 0;
 }

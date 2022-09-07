@@ -57,7 +57,7 @@ public:
     DBLite()
     {
         // Save the result of opening the file
-        rc = sqlite3_open("example.db", &db);
+        rc = sqlite3_open("database.db", &db);
 
         checkDBErrors();
     }
@@ -179,13 +179,13 @@ public:
             data.replace(data.find("$COLUMN$"), sizeof("$COLUMN$") - 1, column.c_str());
             data.replace(data.find("$VALUE$"), sizeof("$VALUE$") - 1, value.c_str());
         }
-
         sqlite3_stmt *stmt;
         sqlite3_prepare_v2(db, data.c_str(), -1, &stmt, NULL);
 
         std::string col_name, col_value;
         std::vector<std::string> entryValues;
 
+        // std::cout << "data" << std::endl;
         int cols = sqlite3_column_count(stmt);
 
         // geht jede row durch id1, id2, id..
@@ -204,6 +204,7 @@ public:
                 }
             }
         }
+
         sqlite3_finalize(stmt);
         return entryValues;
     }

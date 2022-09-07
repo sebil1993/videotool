@@ -19,7 +19,12 @@ DBLite checkForDB(std::string pathToDatabase)
 {
     if (!boost::filesystem::exists(pathToDatabase.c_str()))
     {
-        // init db und erstelle eventtypes
+        boost::filesystem::path path = pathToDatabase;
+        path.remove_filename();
+        if (!boost::filesystem::exists(path))
+        {
+            boost::filesystem::create_directories(path);
+        }
         DBLite sqlDB(pathToDatabase.c_str());
         std::cout << "creating database at: " << pathToDatabase << std::endl;
         sqlDB.createTable();
@@ -43,7 +48,7 @@ std::vector<std::string> checkForEntry(DBLite &db, std::string ip_address)
     return entryValues;
 }
 
-std::vector<std::string> getInputArray(int argc, char *argv[])
+std::vector<std::string> getInputCredentials(int argc, char *argv[])
 {
     std::vector<std::string> inputs;
     std::string ip_address, username, password;
@@ -84,12 +89,10 @@ std::vector<bool> getInputSettings(int argc, char *argv[])
     {
         if (strcmp(argv[4], "-auth") == 0)
         {
-            // std::cout << "auth is true" << std::endl;
             authInHeader = true;
         }
         else if (strcmp(argv[4], "-debug") == 0)
         {
-            // std::cout << "debug is true" << std::endl;
             debug = true;
         }
     }
@@ -97,12 +100,10 @@ std::vector<bool> getInputSettings(int argc, char *argv[])
     {
         if (strcmp(argv[5], "-auth") == 0)
         {
-            // std::cout << "auth is true" << std::endl;
             authInHeader = true;
         }
         else if (strcmp(argv[5], "-debug") == 0)
         {
-            // std::cout << "debug is true" << std::endl;
             debug = true;
         }
     }
@@ -112,11 +113,40 @@ std::vector<bool> getInputSettings(int argc, char *argv[])
     return settings;
 }
 
+boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
+{
+    std::string nameOfFolder = "";
+    nameOfFolder += camera[CAM_MANUFACTURER];
+    nameOfFolder += '_';
+    nameOfFolder += camera[CAM_MODEL];
+    nameOfFolder += '_';
+    nameOfFolder += camera[CAM_SERIALNUMBER];
+    while (true)
+    {
+        if (nameOfFolder.find(" ") == std::string::npos)
+            break;
+        nameOfFolder.replace(nameOfFolder.find(" "), sizeof(" ") - 1, "_");
+    }
+
+    boost::filesystem::path path = boost::filesystem::current_path();
+    path += "/storage/cameras/";
+    path += nameOfFolder;
+
+    if (!boost::filesystem::exists(path))
+    {
+        std::cout << "creating directory " << nameOfFolder << " for " << camera[CAM_IPADDRESS] << std::endl;
+        boost::filesystem::create_directories(path);
+    }
+
+    return path;
+}
+
 std::vector<std::string> createCameraEntry(DBLite &db, std::vector<std::string> inputs, std::vector<bool> settings)
 {
     Onvif camera(inputs[0], inputs[1], inputs[2]);
+    std::cout <<"creating camera entry" << std::endl;
+    //problem ist dass wenn die ip viable ist. es gibt keine abbruch bedingung fürs curl
     camera.init(settings[0], settings[1]);
-
     if (camera.getStreamUri().size() > 10)
     {
         std::cout << "first check successfull" << std::endl;
@@ -138,27 +168,31 @@ std::vector<std::string> createCameraEntry(DBLite &db, std::vector<std::string> 
             exit(0);
         }
     }
-    std::cout << "creating Entry for " << camera.getIP() << std::endl;
-    return db.insertCameras(camera.getIP(), camera.getUser(), camera.getPassword(), camera.getManufacturer(), camera.getModel(), camera.getSerialnumber(), camera.getStreamUri());
+    std::vector<std::string> cameraEntry = db.insertCameras(camera.getIP(), camera.getUser(), camera.getPassword(), camera.getManufacturer(), camera.getModel(), camera.getSerialnumber(), camera.getStreamUri());
+    std::cout << "creating Entry for " << cameraEntry[CAM_IPADDRESS] << std::endl;
+    checkOrCreateDirectory(cameraEntry);
+
+    return cameraEntry;
 }
 
 int main(int argc, char *argv[])
 {
     boost::filesystem::path databasePath = boost::filesystem::current_path();
     databasePath += "/storage/database/database.db";
-    
     DBLite db = checkForDB(databasePath.string());
-    std::vector<std::string> inputs = getInputArray(argc, argv);
-    std::vector<std::string> output = checkForEntry(db, inputs[0]);
 
-    if (output.size() > 0)
+    std::vector<std::string> inputs = getInputCredentials(argc, argv);
+
+    std::vector<std::string> camera = checkForEntry(db, inputs[0]);
+    if (camera.size() > 0)
     {
         std::cout << "camera found" << std::endl;
     }
     else
     {
+        std::cout << "no camera found" << std::endl;
         std::vector<bool> settings = getInputSettings(argc, argv);
-        output = createCameraEntry(db, inputs, settings);
+        camera = createCameraEntry(db, inputs, settings);
     }
 
     for (int i = 0; i < argc; i++)
@@ -169,16 +203,6 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    //zusätzlich zum db eintrag wird auch der ordner erstellt in dem die ereignisse liegen werden
-    
-    
-    std::string startBufferSystemCall = "./startBufferRecord $IPADDRESS$";
-    startBufferSystemCall.replace(startBufferSystemCall.find("$IPADDRESS$"),sizeof("$IPADDRESS$")-1, inputs[0]);
-        
-    //./startBuffer 10.15.100.200
-    // std::cout << startBufferSystemCall << std::endl;
-    
-    system(startBufferSystemCall.c_str());
-   
+
     return 0;
 }
