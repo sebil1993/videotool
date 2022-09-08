@@ -51,7 +51,7 @@ boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
 
 std::string createSystemCallCommandForBuffer(std::vector<std::string> camera)
 {
-    std::string systemCallCommand = "ffmpeg -hide_banner -loglevel info -i '$STREAMURI$' ";
+    std::string systemCallCommand = "ffmpeg -hide_banner -loglevel error -i '$STREAMURI$' ";
     systemCallCommand += "-g 20 -b:v 2M -maxrate 2M -bufsize 1M -f hls -hls_flags delete_segments -hls_base_url '$BASEURL$/' -hls_time 2 -hls_list_size 10 '$OUTPUT$.m3u8'";
 
     std::string outputFilename = "$PATH$/$FILENAME$";
@@ -88,8 +88,13 @@ int main(int argc, char *argv[])
     std::vector<std::string> camera = db.searchEntry("cameras", "*", "ipaddress", argv[1]);
     if (camera.size() == 0)
     {
-        std::cout << "[startBufferRecord] no camera with: " << argv[1] << " found!" << std::endl;
-        exit(0);
+        std::cout << "[startBufferRecord] no camera with IP: " << argv[1] << " found!" << std::endl;
+        camera = db.searchEntry("cameras", "*", "id", argv[1]);
+        if (camera.size() == 0)
+        {
+            std::cout << "[startBufferRecord] no camera with ID: " << argv[1] << " found!" << std::endl;
+            exit(0);
+        }
     }
     // std::cout << createSystemCallCommandForBuffer(camera) << std::endl;
     std::cout << "[startBufferRecord] starting buffer for: " << camera[CAM_IPADDRESS] << std::endl;

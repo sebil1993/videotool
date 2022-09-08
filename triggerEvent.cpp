@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
         std::cout << "exiting" << std::endl;
         exit(0);
     }
-    int camera_id = stoi(argv[1]);
+    int camera_id = std::stoi(argv[1]);
     int event_id = db.insertEvent(camera_id, 1);
 
     mesg_buffer messageConcate;

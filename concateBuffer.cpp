@@ -53,7 +53,7 @@ std::string getFilenameForBuffer(std::vector<std::string> camera, int event_id)
     std::string filename;
     filename = camera[CAM_SERIALNUMBER];
     filename += "_event_id_";
-    filename += to_string(event_id);
+    filename += std::to_string(event_id);
     filename += "_buffer.ts";
     return filename;
 }
@@ -62,7 +62,7 @@ std::string getFilenameForEvent(std::vector<std::string> camera, int event_id)
     std::string filename;
     filename = camera[CAM_SERIALNUMBER];
     filename += "_event_id_";
-    filename += to_string(event_id);
+    filename += std::to_string(event_id);
     filename += "_event.ts";
     return filename;
 }
@@ -82,7 +82,7 @@ std::string createSystemCallCommandForConcate(std::vector<std::string> camera, i
     concateCall.replace(concateCall.find("$FILEPATHBUFFER$"), sizeof("$FILEPATHBUFFER$") - 1, filePathBuffer.c_str());
     concateCall.replace(concateCall.find("$CAMERAPATH$"), sizeof("$CAMERAPATH$") - 1, cameraPath.c_str());
     concateCall.replace(concateCall.find("$SERIALNUMBER$"), sizeof("$SERIALNUMBER$") - 1, camera[CAM_SERIALNUMBER].c_str());
-    concateCall.replace(concateCall.find("$EID$"), sizeof("$EID$") - 1, to_string(event_id).c_str());
+    concateCall.replace(concateCall.find("$EID$"), sizeof("$EID$") - 1, std::to_string(event_id).c_str());
     concateCall.replace(concateCall.find("$PREFIX$"), sizeof("$PREFIX$") - 1, namePrefix.c_str());
 
     return concateCall;
@@ -109,15 +109,15 @@ void concateBufferAndEvent(std::vector<std::string> camera, int event_id)
         boost::filesystem::create_directories(cameraPath);
     }
 
-    std::string syscall = "cat $BUFFEREVENTID$ $EVENTEVENTID$ | ffmpeg -hide_banner -loglevel panic -fflags +discardcorrupt -f mpegts -i pipe: -c:v libx264 -b:v 500K $CAMERAEVENTSPATH$/event_id_$EVENTID$.mp4";
+    std::string syscall = "cat $BUFFEREVENTID$ $EVENTEVENTID$ | ffmpeg -hide_banner -loglevel panic -fflags +discardcorrupt -f mpegts -i pipe: -c:v libx264 -b:v 500K '$CAMERAEVENTSPATH$/event_id_$EVENTID$.mp4'";
     syscall.replace(syscall.find("$BUFFEREVENTID$"), sizeof("$BUFFEREVENTID$") - 1, buffer_event.c_str());
     syscall.replace(syscall.find("$EVENTEVENTID$"), sizeof("$EVENTEVENTID$") - 1, event_event.c_str());
     syscall.replace(syscall.find("$CAMERAEVENTSPATH$"), sizeof("$CAMERAEVENTSPATH$") - 1, cameraPath.c_str());
-    syscall.replace(syscall.find("$EVENTID$"), sizeof("$EVENTID$") - 1, to_string(event_id).c_str());
+    syscall.replace(syscall.find("$EVENTID$"), sizeof("$EVENTID$") - 1, std::to_string(event_id).c_str());
 
     std::string filepath = "$CAMERAEVENTSPATH$/event_id_$EVENTID$.mp4";
     filepath.replace(filepath.find("$CAMERAEVENTSPATH$"), sizeof("$CAMERAEVENTSPATH$") - 1, cameraPath.c_str());
-    filepath.replace(filepath.find("$EVENTID$"), sizeof("$EVENTID$") - 1, to_string(event_id).c_str());
+    filepath.replace(filepath.find("$EVENTID$"), sizeof("$EVENTID$") - 1, std::to_string(event_id).c_str());
 
     system(syscall.c_str());
     db.updatePathToEvent(event_id, filepath);

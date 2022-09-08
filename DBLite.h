@@ -6,7 +6,6 @@
 // https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm
 // https://videlais.com/2018/12/14/c-with-sqlite3-part-5-encapsulating-database-objects/
 // https://www.proggen.org/doku.php?id=dbs:sqlite:libsqlite3:communicate:sqlite3_prepared
-using namespace std;
 
 #define CAM_IPADDRESS 1
 #define CAM_USERNAME 2
@@ -31,14 +30,14 @@ private:
     int rc;
 
     // Saved SQL
-    string data;
+    std::string data;
 
     // Create a callback function
     static int callback(void *NotUsed, int argc, char **argv, char **azColName)
     {
         for (int i = 0; i < argc; i++)
         {
-            cout << azColName[i] << ": " << argv[i] << endl;
+            std::cout << azColName[i] << ": " << argv[i] << std::endl;
         }
         return 0;
     }
@@ -48,7 +47,7 @@ private:
         if (rc)
         {
             // Show an error message
-            cout << "DB Error: " << sqlite3_errmsg(db) << endl;
+            std::cout << "DB Error: " << sqlite3_errmsg(db) << std::endl;
             closeDB();
         }
     }
@@ -61,7 +60,7 @@ public:
 
         checkDBErrors();
     }
-    DBLite(string databaseFileName)
+    DBLite(std::string databaseFileName)
     {
         // Save the result of opening the file
         rc = sqlite3_open(databaseFileName.c_str(), &db);
@@ -80,13 +79,13 @@ public:
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
     // insert cameras
-    void insertCameras(string IPAddress)
+    void insertCameras(std::string IPAddress)
     {
         data = "INSERT INTO CAMERAS ('ipaddress') VALUES ('$IPAddress$');";
         data.replace(data.find("$IPAddress$"), sizeof("$IPAddress$") - 1, IPAddress.c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
-    void insertCameras(string IPAddress, string username, string password)
+    void insertCameras(std::string IPAddress, std::string username, std::string password)
     {
         data = "INSERT INTO CAMERAS ('ipaddress', 'username', 'password',) VALUES ('$IPAddress$','$username$','$password$');";
         data.replace(data.find("$IPAddress$"), sizeof("$IPAddress$") - 1, IPAddress.c_str());
@@ -94,7 +93,7 @@ public:
         data.replace(data.find("$password$"), sizeof("$password$") - 1, password.c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
-    std::vector<std::string> insertCameras(string IPAddress, string username, string password, string manufacturer, string model, string serialnumber, string streamuri)
+    std::vector<std::string> insertCameras(std::string IPAddress, std::string username, std::string password, std::string manufacturer, std::string model, std::string serialnumber, std::string streamuri)
     {
         data = "INSERT INTO CAMERAS ('ipaddress', 'username', 'password', 'manufacturer', 'model', 'serialnumber', 'streamuri') VALUES ('$IPAddress$','$username$','$password$','$manufacturer$','$model$','$serialnumber$','$streamuri$');";
         data.replace(data.find("$IPAddress$"), sizeof("$IPAddress$") - 1, IPAddress.c_str());
@@ -119,8 +118,8 @@ public:
     int insertEvent(int camera_id, int eventtype_id)
     {
         data = "INSERT INTO events(timestamp, camera_id, eventtype_id) VALUES(datetime('now', 'localtime'), '$camera_id$', '$eventtype_id$');";
-        data.replace(data.find("$camera_id$"), sizeof("$camera_id$") - 1, to_string(camera_id).c_str());
-        data.replace(data.find("$eventtype_id$"), sizeof("$eventtype_id$") - 1, to_string(eventtype_id).c_str());
+        data.replace(data.find("$camera_id$"), sizeof("$camera_id$") - 1, std::to_string(camera_id).c_str());
+        data.replace(data.find("$eventtype_id$"), sizeof("$eventtype_id$") - 1, std::to_string(eventtype_id).c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
 
         int event_id = sqlite3_last_insert_rowid(db);
@@ -128,24 +127,24 @@ public:
         return event_id;
     }
 
-    void insertEvent(string timestamp, int camera_id, int eventtype_id)
+    void insertEvent(std::string timestamp, int camera_id, int eventtype_id)
     {
         data = "INSERT INTO events(timestamp, camera_id, eventtype_id) VALUES('$timestamp$', '$camera_id$', '$eventtype_id$');";
         data.replace(data.find("$timestamp$"), sizeof("$timestamp$") - 1, timestamp.c_str());
-        data.replace(data.find("$camera_id$"), sizeof("$camera_id$") - 1, to_string(camera_id).c_str());
-        data.replace(data.find("$eventtype_id$"), sizeof("$eventtype_id$") - 1, to_string(eventtype_id).c_str());
+        data.replace(data.find("$camera_id$"), sizeof("$camera_id$") - 1, std::to_string(camera_id).c_str());
+        data.replace(data.find("$eventtype_id$"), sizeof("$eventtype_id$") - 1, std::to_string(eventtype_id).c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
     void updatePathToEvent(int event_id, std::string filepath)
     {
         data = "update events set filepath = '$FILEPATH$' where id = $EVENT_ID$;";
         data.replace(data.find("$FILEPATH$"), sizeof("$FILEPATH$") - 1, filepath.c_str());
-        data.replace(data.find("$EVENT_ID$"), sizeof("$EVENT_ID$") - 1, to_string(event_id).c_str());
+        data.replace(data.find("$EVENT_ID$"), sizeof("$EVENT_ID$") - 1, std::to_string(event_id).c_str());
 
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
 
-    void showTable(string table)
+    void showTable(std::string table)
     {
         data = "SELECT * FROM $TABLE$;";
         data.replace(data.find("$TABLE$"), sizeof("$TABLE$") - 1, table.c_str());
@@ -157,12 +156,12 @@ public:
     {
         data = "DELETE FROM CAMERAS WHERE ID = '$ID$';";
 
-        data.replace(data.find("$ID$"), sizeof("$ID$") - 1, to_string(ID).c_str());
+        data.replace(data.find("$ID$"), sizeof("$ID$") - 1, std::to_string(ID).c_str());
 
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
 
-    std::vector<std::string> searchEntry(string table, string columns, string column, string value)
+    std::vector<std::string> searchEntry(std::string table, std::string columns, std::string column, std::string value)
     {
 
         data = "SELECT $COLUMNS$ FROM $TABLE$ \r\n";
