@@ -6,6 +6,7 @@
 // https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm
 // https://videlais.com/2018/12/14/c-with-sqlite3-part-5-encapsulating-database-objects/
 // https://www.proggen.org/doku.php?id=dbs:sqlite:libsqlite3:communicate:sqlite3_prepared
+using namespace std;
 
 #define CAM_IPADDRESS 1
 #define CAM_USERNAME 2
@@ -30,14 +31,14 @@ private:
     int rc;
 
     // Saved SQL
-    std::string data;
+    string data;
 
     // Create a callback function
     static int callback(void *NotUsed, int argc, char **argv, char **azColName)
     {
         for (int i = 0; i < argc; i++)
         {
-            std::cout << azColName[i] << ": " << argv[i] << std::endl;
+            cout << azColName[i] << ": " << argv[i] << endl;
         }
         return 0;
     }
@@ -47,7 +48,7 @@ private:
         if (rc)
         {
             // Show an error message
-            std::cout << "DB Error: " << sqlite3_errmsg(db) << std::endl;
+            cout << "DB Error: " << sqlite3_errmsg(db) << endl;
             closeDB();
         }
     }
@@ -56,13 +57,14 @@ public:
     DBLite()
     {
         // Save the result of opening the file
-        rc = sqlite3_open("database.db", &db);
+        rc = sqlite3_open("example.db", &db);
 
         checkDBErrors();
     }
-    DBLite(std::string databaseFileName)
+    DBLite(string databaseFileName)
     {
         // Save the result of opening the file
+        // std::cout << databaseFileName << std::endl;
         rc = sqlite3_open(databaseFileName.c_str(), &db);
 
         checkDBErrors();
@@ -71,7 +73,7 @@ public:
     void createTable()
     {
         // Erstes Mal Starten
-        data = "CREATE TABLE cameras (ID INTEGER PRIMARY KEY AUTOINCREMENT, ipaddress VARCHAR(255) NOT NULL, username VARCHAR(255) DEFAULT '', password VARCHAR(255) DEFAULT '', manufacturer VARCHAR(255) DEFAULT '', model VARCHAR(255) DEFAULT '', serialnumber VARCHAR(255) DEFAULT '', streamuri VARCHAR(255) DEFAULT '', snapshoturi VARCHAR(255) DEFAULT '');";
+        data = "CREATE TABLE cameras (ID INTEGER PRIMARY KEY AUTOINCREMENT, ip_address VARCHAR(255) NOT NULL, username VARCHAR(255) DEFAULT '', password VARCHAR(255) DEFAULT '', manufacturer VARCHAR(255) DEFAULT '', model VARCHAR(255) DEFAULT '', serialnumber VARCHAR(255) DEFAULT '', stream_uri VARCHAR(255) DEFAULT '', snapshoturi VARCHAR(255) DEFAULT '');";
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
         data = "CREATE TABLE eventtypes (ID INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(255) NOT NULL);";
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
@@ -79,33 +81,33 @@ public:
         rc = sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
     // insert cameras
-    void insertCameras(std::string IPAddress)
+    void insertCameras(string IPAddress)
     {
-        data = "INSERT INTO CAMERAS ('ipaddress') VALUES ('$IPAddress$');";
+        data = "INSERT INTO CAMERAS ('ip_address') VALUES ('$IPAddress$');";
         data.replace(data.find("$IPAddress$"), sizeof("$IPAddress$") - 1, IPAddress.c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
-    void insertCameras(std::string IPAddress, std::string username, std::string password)
+    void insertCameras(string IPAddress, string username, string password)
     {
-        data = "INSERT INTO CAMERAS ('ipaddress', 'username', 'password',) VALUES ('$IPAddress$','$username$','$password$');";
+        data = "INSERT INTO CAMERAS ('ip_address', 'username', 'password',) VALUES ('$IPAddress$','$username$','$password$');";
         data.replace(data.find("$IPAddress$"), sizeof("$IPAddress$") - 1, IPAddress.c_str());
         data.replace(data.find("$username$"), sizeof("$username$") - 1, username.c_str());
         data.replace(data.find("$password$"), sizeof("$password$") - 1, password.c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
-    std::vector<std::string> insertCameras(std::string IPAddress, std::string username, std::string password, std::string manufacturer, std::string model, std::string serialnumber, std::string streamuri)
+    std::vector<std::string> insertCameras(string IPAddress, string username, string password, string manufacturer, string model, string serialnumber, string streamuri)
     {
-        data = "INSERT INTO CAMERAS ('ipaddress', 'username', 'password', 'manufacturer', 'model', 'serialnumber', 'streamuri') VALUES ('$IPAddress$','$username$','$password$','$manufacturer$','$model$','$serialnumber$','$streamuri$');";
+        data = "INSERT INTO CAMERAS ('ip_address', 'username', 'password', 'manufacturer', 'model', 'serialnumber', 'stream_uri') VALUES ('$IPAddress$','$username$','$password$','$manufacturer$','$model$','$serialnumber$','$stream_uri$');";
         data.replace(data.find("$IPAddress$"), sizeof("$IPAddress$") - 1, IPAddress.c_str());
         data.replace(data.find("$username$"), sizeof("$username$") - 1, username.c_str());
         data.replace(data.find("$password$"), sizeof("$password$") - 1, password.c_str());
         data.replace(data.find("$manufacturer$"), sizeof("$manufacturer$") - 1, manufacturer.c_str());
         data.replace(data.find("$model$"), sizeof("$model$") - 1, model.c_str());
         data.replace(data.find("$serialnumber$"), sizeof("$serialnumber$") - 1, serialnumber.c_str());
-        data.replace(data.find("$streamuri$"), sizeof("$streamuri$") - 1, streamuri.c_str());
+        data.replace(data.find("$stream_uri$"), sizeof("$stream_uri$") - 1, streamuri.c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
 
-        return this->searchEntry("cameras", "*", "ipaddress", IPAddress.c_str());
+        return this->searchEntry("cameras", "*", "ip_address", IPAddress.c_str());
     }
 
     void insertEventTypes(std::string eventName)
@@ -118,8 +120,8 @@ public:
     int insertEvent(int camera_id, int eventtype_id)
     {
         data = "INSERT INTO events(timestamp, camera_id, eventtype_id) VALUES(datetime('now', 'localtime'), '$camera_id$', '$eventtype_id$');";
-        data.replace(data.find("$camera_id$"), sizeof("$camera_id$") - 1, std::to_string(camera_id).c_str());
-        data.replace(data.find("$eventtype_id$"), sizeof("$eventtype_id$") - 1, std::to_string(eventtype_id).c_str());
+        data.replace(data.find("$camera_id$"), sizeof("$camera_id$") - 1, to_string(camera_id).c_str());
+        data.replace(data.find("$eventtype_id$"), sizeof("$eventtype_id$") - 1, to_string(eventtype_id).c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
 
         int event_id = sqlite3_last_insert_rowid(db);
@@ -127,24 +129,25 @@ public:
         return event_id;
     }
 
-    void insertEvent(std::string timestamp, int camera_id, int eventtype_id)
+    void insertEvent(string timestamp, int camera_id, int eventtype_id)
     {
         data = "INSERT INTO events(timestamp, camera_id, eventtype_id) VALUES('$timestamp$', '$camera_id$', '$eventtype_id$');";
         data.replace(data.find("$timestamp$"), sizeof("$timestamp$") - 1, timestamp.c_str());
-        data.replace(data.find("$camera_id$"), sizeof("$camera_id$") - 1, std::to_string(camera_id).c_str());
-        data.replace(data.find("$eventtype_id$"), sizeof("$eventtype_id$") - 1, std::to_string(eventtype_id).c_str());
+        data.replace(data.find("$camera_id$"), sizeof("$camera_id$") - 1, to_string(camera_id).c_str());
+        data.replace(data.find("$eventtype_id$"), sizeof("$eventtype_id$") - 1, to_string(eventtype_id).c_str());
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
     void updatePathToEvent(int event_id, std::string filepath)
     {
-        data = "update events set filepath = '$FILEPATH$' where id = $EVENT_ID$;";
+        data = "update events set path = '$FILEPATH$' where id = $EVENT_ID$;";
         data.replace(data.find("$FILEPATH$"), sizeof("$FILEPATH$") - 1, filepath.c_str());
-        data.replace(data.find("$EVENT_ID$"), sizeof("$EVENT_ID$") - 1, std::to_string(event_id).c_str());
-
+        data.replace(data.find("$EVENT_ID$"), sizeof("$EVENT_ID$") - 1, to_string(event_id).c_str());
+        // data = "update events set path = \"/Users/kentix/Documents/git/videotool-webinterface/storage/app/cameras/AXIS_M2025-LE_ACCC8EA80800/events/event_id_13.mp4\" where id = 12;";
+        std::cout << data << std::endl;
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
 
-    void showTable(std::string table)
+    void showTable(string table)
     {
         data = "SELECT * FROM $TABLE$;";
         data.replace(data.find("$TABLE$"), sizeof("$TABLE$") - 1, table.c_str());
@@ -156,18 +159,17 @@ public:
     {
         data = "DELETE FROM CAMERAS WHERE ID = '$ID$';";
 
-        data.replace(data.find("$ID$"), sizeof("$ID$") - 1, std::to_string(ID).c_str());
+        data.replace(data.find("$ID$"), sizeof("$ID$") - 1, to_string(ID).c_str());
 
         sqlite3_exec(db, data.c_str(), callback, 0, &zErrMsg);
     }
 
-    std::vector<std::string> searchEntry(std::string table, std::string columns, std::string column, std::string value)
+    std::vector<std::string> searchEntry(string table, string columns, string column, string value)
     {
-
         data = "SELECT $COLUMNS$ FROM $TABLE$ \r\n";
         if (column.size() > 0 && value.size() > 0)
         {
-            data += "WHERE $COLUMN$ = '$VALUE$'";
+            data += "WHERE $COLUMN$ = '$VALUE$';";
         }
 
         data.replace(data.find("$COLUMNS$"), sizeof("$COLUMNS$") - 1, columns.c_str());
@@ -178,18 +180,19 @@ public:
             data.replace(data.find("$COLUMN$"), sizeof("$COLUMN$") - 1, column.c_str());
             data.replace(data.find("$VALUE$"), sizeof("$VALUE$") - 1, value.c_str());
         }
+
         sqlite3_stmt *stmt;
         sqlite3_prepare_v2(db, data.c_str(), -1, &stmt, NULL);
 
         std::string col_name, col_value;
         std::vector<std::string> entryValues;
 
-        // std::cout << "data" << std::endl;
         int cols = sqlite3_column_count(stmt);
 
         // geht jede row durch id1, id2, id..
         while (sqlite3_step(stmt) == SQLITE_ROW)
         { // geht jede spalte einer row durch
+
             for (int i = 0; i < cols; i++)
             {
                 if (sqlite3_column_name(stmt, i))
@@ -203,7 +206,6 @@ public:
                 }
             }
         }
-
         sqlite3_finalize(stmt);
         return entryValues;
     }
