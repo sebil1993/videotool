@@ -37,12 +37,14 @@ boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
         nameOfFolder.replace(nameOfFolder.find(" "), sizeof(" ") - 1, "_");
     }
 
-    boost::filesystem::path path = boost::filesystem::current_path();
-    path += "/storage/cameras/";
-    path += nameOfFolder;
+    boost::filesystem::path path = boost::filesystem::absolute("startBufferRecord");
+    path = path.parent_path().parent_path();
 
+    path += "/storage/app/cameras/";
+    path += nameOfFolder;
     if (!boost::filesystem::exists(path))
     {
+    std::cout << path << std::endl;
         boost::filesystem::create_directory(path);
     }
 
@@ -52,6 +54,7 @@ boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
 std::string createSystemCallCommandForBuffer(std::vector<std::string> camera)
 {
     std::string systemCallCommand = "ffmpeg -hide_banner -loglevel error -i '$STREAMURI$' ";
+    // std::string systemCallCommand = "ffmpeg -i '$STREAMURI$' ";
     systemCallCommand += "-g 20 -b:v 2M -maxrate 2M -bufsize 1M -f hls -hls_flags delete_segments -hls_base_url '$BASEURL$/' -hls_time 2 -hls_list_size 10 '$OUTPUT$.m3u8'";
 
     std::string outputFilename = "$PATH$/$FILENAME$";
@@ -79,15 +82,22 @@ int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
+        std::cout << "[startBufferRecord] no camera given" << std::endl;
         exit(0);
     }
 
-    boost::filesystem::path databasePath = boost::filesystem::current_path();
-    databasePath += "/storage/database/database.db";
+    boost::filesystem::path databasePath;// = argv[0];
+    databasePath = boost::filesystem::absolute(databasePath);
+    // std::cout << databasePath << std::endl;
+    databasePath = databasePath.parent_path();
+    databasePath += "/database/database.sqlite";
     DBLite db(databasePath.string());
-    std::vector<std::string> camera = db.searchEntry("cameras", "*", "ipaddress", argv[1]);
+
+        // std::cout << "danach" << std::endl;
+    std::vector<std::string> camera = db.searchEntry("cameras", "*", "ip_address", argv[1]);
     if (camera.size() == 0)
     {
+        // db.showTable("cameras");
         std::cout << "[startBufferRecord] no camera with IP: " << argv[1] << " found!" << std::endl;
         camera = db.searchEntry("cameras", "*", "id", argv[1]);
         if (camera.size() == 0)
@@ -96,8 +106,9 @@ int main(int argc, char *argv[])
             exit(0);
         }
     }
-    // std::cout << createSystemCallCommandForBuffer(camera) << std::endl;
+    std::cout << createSystemCallCommandForBuffer(camera) << std::endl;
     std::cout << "[startBufferRecord] starting buffer for: " << camera[CAM_IPADDRESS] << std::endl;
+    // std::cout << createSystemCallCommandForBuffer(camera).c_str() << std::endl;
     system(createSystemCallCommandForBuffer(camera).c_str());
 
     return 0;

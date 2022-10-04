@@ -42,8 +42,9 @@ boost::filesystem::path getDirectory(std::vector<std::string> camera)
             break;
         nameOfCamera.replace(nameOfCamera.find(" "), sizeof(" ") - 1, "_");
     }
-    boost::filesystem::path cameraPath = boost::filesystem::current_path();
-    cameraPath += "/storage/cameras/";
+    boost::filesystem::path cameraPath = boost::filesystem::current_path().parent_path();
+
+    cameraPath += "/storage/app/cameras/";
     cameraPath += nameOfCamera;
 
     return cameraPath;
@@ -69,7 +70,7 @@ std::string getFilenameForEvent(std::vector<std::string> camera, int event_id)
 std::string createSystemCallCommandForConcate(std::vector<std::string> camera, int event_id, std::string namePrefix)
 {
     boost::filesystem::path cameraPath = getDirectory(camera);
-    std::cout << "[concateBuffer] concating buffer for "
+    std::cout << "[concateBuffer] concating " << namePrefix << " for "
               << camera[CAM_IPADDRESS]
               << " with EVENT_ID " << event_id << std::endl;
 
@@ -90,8 +91,11 @@ std::string createSystemCallCommandForConcate(std::vector<std::string> camera, i
 
 void concateBufferAndEvent(std::vector<std::string> camera, int event_id)
 {
-    boost::filesystem::path databasePath = boost::filesystem::current_path();
-    databasePath += "/storage/database/database.db";
+
+    boost::filesystem::path databasePath;
+    databasePath = boost::filesystem::absolute(databasePath);
+    databasePath = databasePath.parent_path();
+    databasePath += "/database/database.sqlite";
     DBLite db(databasePath.string());
 
     boost::filesystem::path cameraPath;
@@ -119,17 +123,24 @@ void concateBufferAndEvent(std::vector<std::string> camera, int event_id)
     filepath.replace(filepath.find("$CAMERAEVENTSPATH$"), sizeof("$CAMERAEVENTSPATH$") - 1, cameraPath.c_str());
     filepath.replace(filepath.find("$EVENTID$"), sizeof("$EVENTID$") - 1, std::to_string(event_id).c_str());
 
+    // std::cout << syscall.c_str() << std::endl;
+    std::cout << "[concateBuffer] concating buffer and event " << std::endl;
+
     system(syscall.c_str());
+    std::cout << "[concateBuffer] finished concating buffer and event " << std::endl;
+    boost::filesystem::remove(buffer_event.c_str());
+    boost::filesystem::remove(event_event.c_str());
     db.updatePathToEvent(event_id, filepath);
+    // db.updatePathToEvent(event_id, filepath);
 }
 
 void systemCallWithDelay(std::vector<std::string> camera, int event_id, long long waitTime)
 {
-    std::this_thread::sleep_for(std::chrono::milliseconds(waitTime));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20000 - waitTime));
     system(createSystemCallCommandForConcate(camera, event_id, "event").c_str());
-    std::cout << "finished event recording" << std::endl;
+    // std::cout << createSystemCallCommandForConcate(camera, event_id, "event") << std::endl;
+    std::cout << "[concateBuffer] finished event recording" << std::endl;
     concateBufferAndEvent(camera, event_id);
-    std::cout << "finished concating" << std::endl;
     std::cout << "[concateBuffer] waiting for event: " << std::endl;
 }
 
@@ -142,15 +153,25 @@ struct mesg_buffer
 int main(int argc, char *argv[])
 {
 
-    boost::filesystem::path databasePath = boost::filesystem::current_path();
-    databasePath += "/storage/database/database.db";
+    boost::filesystem::path databasePath;
+    databasePath = boost::filesystem::absolute(databasePath);
+    databasePath = databasePath.parent_path();
+    databasePath += "/database/database.sqlite";
     DBLite db(databasePath.string());
 
-    boost::filesystem::path ftokfilePath = boost::filesystem::current_path();
-    ftokfilePath += "/msgqueue/concate_MSGQ";
-    int msgid = msgget(ftok(ftokfilePath.c_str(), 65), 0666 | IPC_CREAT);
-    std::cout << msgid << std::endl;
-    message.mesg_type = 1;
+    // std::cout << databasePath << std::endl;
+
+    boost::filesystem::path ftokfilePath;
+    ftokfilePath = boost::filesystem::absolute(ftokfilePath);
+    // ftokfilePath = "/Users/kentix/Documents/git/videotool-webinterface/app/bin/concate_MSGQ";
+    ftokfilePath = ftokfilePath.parent_path();
+    ftokfilePath += "/app/bin/concate_MSGQ";
+    // std::cout << ftokfilePath << std::endl;
+    key_t key = ftok(ftokfilePath.c_str(), 'A');
+
+    int msgid = msgget(key, 0666 | IPC_CREAT);
+    // std::cout << "ftok: " << key << std::endl
+    //           << "msgid: " << msgid << std::endl;
 
     std::vector<std::string> parsedConcateMessage, camera;
     boost::filesystem::path cameraPath;
@@ -158,11 +179,12 @@ int main(int argc, char *argv[])
     while (true)
     {
         std::cout << "[concateBuffer] waiting for event: " << std::endl;
-        msgrcv(msgid, &message, sizeof(message), 1, 0);
+        msgrcv(msgid, &message, sizeof(message.mesg_text) - 1, 0, 0);
         parsedConcateMessage = parseConcateMessage(message.mesg_text);
 
         if (strcmp(parsedConcateMessage[0].c_str(), "CONCATE") == 0)
         {
+
             camera = db.searchEntry("cameras", "*", "id", parsedConcateMessage[1]);
 
             if (camera.size() > 0)
@@ -170,21 +192,14 @@ int main(int argc, char *argv[])
 
                 std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                 system(createSystemCallCommandForConcate(camera, stoi(parsedConcateMessage[2]), "buffer").c_str());
+                std::cout << "[concateBuffer] finished buffer recording" << std::endl;
 
                 std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
                 long long timeToFinish = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-                std::thread syscallWithDelay(systemCallWithDelay, camera, stoi(parsedConcateMessage[2]), 20000 - timeToFinish);
+                std::thread syscallWithDelay(systemCallWithDelay, camera, stoi(parsedConcateMessage[2]), timeToFinish);
                 syscallWithDelay.detach();
             }
         }
     }
 }
-
-// concated videos
-// ffmpeg -i buffer.ts -i event.mp4 -filter_complex '[0:0] [1:0] concat=n=2:v=1 [v]' -map '[v]' out.mp4
-// videos weiterpipen nach ffmpeg
-// cat buffer_cat.ts buffer_cat2.ts | ffmpeg -f mpegts -i pipe: -c:v libx264 -b:v 500K hihi2.mp4
-
-// juhu
-// cat `cat 'ACCC8EA80800.m3u8' | grep .ts` | ffmpeg -f mpegts -i pipe: -c:v libx264 -b:v 500K hihi3.mp4

@@ -17,6 +17,7 @@ bool isValidIp(std::string IP)
 
 DBLite checkForDB(std::string pathToDatabase)
 {
+    // std::cout << pathToDatabase << std::endl;
     if (!boost::filesystem::exists(pathToDatabase.c_str()))
     {
         boost::filesystem::path path = pathToDatabase;
@@ -43,7 +44,7 @@ DBLite checkForDB(std::string pathToDatabase)
 
 std::vector<std::string> checkForEntry(DBLite &db, std::string ip_address)
 {
-    std::vector<std::string> entryValues = db.searchEntry("cameras", "*", "ipaddress", ip_address);
+    std::vector<std::string> entryValues = db.searchEntry("cameras", "*", "ip_address", ip_address);
 
     return entryValues;
 }
@@ -128,8 +129,9 @@ boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
         nameOfFolder.replace(nameOfFolder.find(" "), sizeof(" ") - 1, "_");
     }
 
-    boost::filesystem::path path = boost::filesystem::current_path();
-    path += "/storage/cameras/";
+    boost::filesystem::path path = boost::filesystem::absolute("initCamera");
+    path = path.parent_path().parent_path();
+    path += "/storage/app/cameras/";
     path += nameOfFolder;
 
     if (!boost::filesystem::exists(path))
@@ -144,8 +146,8 @@ boost::filesystem::path checkOrCreateDirectory(std::vector<std::string> camera)
 std::vector<std::string> createCameraEntry(DBLite &db, std::vector<std::string> inputs, std::vector<bool> settings)
 {
     Onvif camera(inputs[0], inputs[1], inputs[2]);
-    std::cout <<"creating camera entry" << std::endl;
-    //problem ist dass wenn die ip viable ist. es gibt keine abbruch bedingung fürs curl
+    std::cout << "creating camera entry" << std::endl;
+    // problem entsteht wenn die ip viable ist. es gibt keine abbruch bedingung fürs curl
     camera.init(settings[0], settings[1]);
     if (camera.getStreamUri().size() > 10)
     {
@@ -177,13 +179,17 @@ std::vector<std::string> createCameraEntry(DBLite &db, std::vector<std::string> 
 
 int main(int argc, char *argv[])
 {
-    boost::filesystem::path databasePath = boost::filesystem::current_path();
-    databasePath += "/storage/database/database.db";
+    boost::filesystem::path databasePath = boost::filesystem::absolute("initCamera");
+    databasePath = databasePath.parent_path().parent_path();
+    databasePath += "/database/database.sqlite";
+
+    std::cout << databasePath << std::endl;
     DBLite db = checkForDB(databasePath.string());
 
     std::vector<std::string> inputs = getInputCredentials(argc, argv);
+    std::vector<bool> settings = getInputSettings(argc, argv);
 
-    std::vector<std::string> camera = checkForEntry(db, inputs[0]);
+    std::vector<std::string> camera = db.searchEntry("cameras", "*", "ip_address", inputs[0]);
     if (camera.size() > 0)
     {
         std::cout << "camera found" << std::endl;
@@ -197,7 +203,7 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < argc; i++)
     {
-        if (strcmp(argv[i], "-show_table") == 0)
+        if (strcmp(argv[i], "-show_cameras") == 0)
         {
             db.showTable("cameras");
             break;

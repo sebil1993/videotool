@@ -35,7 +35,8 @@ int main(int argc, char *argv[])
 
     boost::filesystem::path ftokfilePath = boost::filesystem::current_path();
     ftokfilePath += "/msgqueue/concate_MSGQ";
-    int concateMsgid = msgget(ftok(ftokfilePath.c_str(), 65), 0666 | IPC_CREAT);
+    // int concateMsgid = msgget(ftok(ftokfilePath.c_str(), 65), 0666 | IPC_CREAT);
+    int concateMsgid = msgget(65540, 0666 | IPC_CREAT);
     std::cout << "concateMsgid " << concateMsgid << std::endl;
 
     std::string concateMessageString = "CONCATE_$CID$_$EID$";
